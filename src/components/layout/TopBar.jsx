@@ -53,22 +53,15 @@ export default function TopBar({ rooms, user }) {
           <span className="text-xs text-subtle font-medium hidden sm:block">{me.alias}</span>
         )}
 
-        {/* Posición + campana con puntos */}
+        {/* Posición + puntos */}
         {me && currentRoomId && (() => {
           const pos = members.indexOf(me)
           const posLabel = pos === 0 ? '🥇' : pos === 1 ? '🥈' : pos === 2 ? '🥉' : `${pos + 1}°`
           return (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted font-semibold">{posLabel}</span>
-              <div className="relative">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-gold text-bg text-[10px] font-black rounded-full flex items-center justify-center px-0.5 leading-none">
-                  {me.totalPoints ?? 0}
-                </span>
-              </div>
+            <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2.5 py-1">
+              <span className="text-xs font-semibold">{posLabel}</span>
+              <span className="text-xs text-muted">·</span>
+              <span className="text-xs text-gold font-black">{me.totalPoints ?? 0}</span>
             </div>
           )
         })()}
