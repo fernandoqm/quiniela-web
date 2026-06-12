@@ -13,11 +13,7 @@ export default function TopBar({ rooms, user }) {
     <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
       {/* Logo */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a10 10 0 0 0-3.6 19.4L12 12l3.6 9.4A10 10 0 0 0 12 2z"/>
-          <path d="M2.5 8.5h5l4.5 3.5-4.5 3.5h-5M21.5 8.5h-5L12 12l4.5 3.5h5"/>
-        </svg>
+        <img src="/copa_fifa.png" alt="Copa FIFA" className="w-6 h-6 object-contain" />
         <span className="text-gold font-bold text-base tracking-tight">Quiniela</span>
       </div>
 

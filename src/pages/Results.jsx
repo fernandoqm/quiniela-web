@@ -32,7 +32,7 @@ function MatchResults({ match, roomId, user, members }) {
       {/* Winner highlight */}
       {winner && (
         <div className="bg-win/15 border-b border-win/30 px-4 py-4 text-center">
-          <p className="text-2xl mb-1">🏆</p>
+          <img src="/copa_fifa.png" alt="Copa" className="w-10 h-10 object-contain mx-auto mb-1" />
           <p className="text-xs text-win/70 mb-0.5">
             Partido · {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · FT
           </p>
@@ -111,7 +111,10 @@ export default function Results({ user }) {
           </div>
           {leader && (
             <div className="mt-2 bg-win/10 border border-win/20 rounded-xl px-4 py-2 flex items-center justify-between">
-              <span className="text-xs text-win font-medium">🏆 {leader.alias} lidera la sala</span>
+              <span className="text-xs text-win font-medium flex items-center gap-1.5">
+                <img src="/copa_fifa.png" alt="" className="w-4 h-4 object-contain" />
+                {leader.alias} lidera la sala
+              </span>
               <span className="text-xs text-win font-bold">{leader.totalPoints} pts total</span>
             </div>
           )}

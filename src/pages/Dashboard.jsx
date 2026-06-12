@@ -65,18 +65,23 @@ function NextMatchCountdown({ match }) {
     return `${sec}s`
   }
 
+  const isFinal = match.stage === 'FINAL'
+
   return (
-    <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-xs text-muted uppercase tracking-widest mb-1">Próximo partido</p>
-        <p className="text-sm font-semibold truncate">
-          {match.homeTeam?.shortName} vs {match.awayTeam?.shortName}
-        </p>
-        <p className="text-xs text-muted">{formatStage(match)} · {formatTime(match.kickoff)}</p>
+    <div className={`border rounded-xl px-4 py-3 flex items-center justify-between gap-3 ${isFinal ? 'bg-gold/5 border-gold/30' : 'bg-card border-border'}`}>
+      <div className="flex items-center gap-3 min-w-0">
+        {isFinal && <img src="/copa_fifa.png" alt="Final" className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />}
+        <div className="min-w-0">
+          <p className="text-xs text-muted uppercase tracking-widest mb-1">Próximo partido</p>
+          <p className="text-sm font-semibold truncate">
+            {match.homeTeam?.shortName} vs {match.awayTeam?.shortName}
+          </p>
+          <p className="text-xs text-muted">{formatStage(match)} · {formatTime(match.kickoff)}</p>
+        </div>
       </div>
       <div className="text-right shrink-0">
         <p className="text-xs text-muted mb-0.5">⏰ Empieza en</p>
-        <p className="text-gold text-xl font-black tabular-nums">{fmt(ms)}</p>
+        <p className={`text-xl font-black tabular-nums ${isFinal ? 'text-gold' : 'text-gold'}`}>{fmt(ms)}</p>
       </div>
     </div>
   )
