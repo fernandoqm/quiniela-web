@@ -54,6 +54,19 @@ function groupByDay(matches) {
   }, {})
 }
 
+function formatStage(match) {
+  const g = match.group?.replace('GROUP_', '')
+  if (g && g.length <= 2) return `Grupo ${g}`
+  const stages = {
+    LAST_16: 'Octavos de final',
+    QUARTER_FINALS: 'Cuartos de final',
+    SEMI_FINALS: 'Semifinal',
+    THIRD_PLACE: '3er lugar',
+    FINAL: '🏆 Final',
+  }
+  return stages[match.stage] || ''
+}
+
 function ScoreCircle({ value, onChange, disabled }) {
   return (
     <div className="flex flex-col items-center gap-1">
@@ -163,7 +176,7 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
         </p>
         <p className="text-xs text-muted mt-0.5">
           {formatDay(match.kickoff)} {formatTime(match.kickoff)}
-          {match.group ? ` · ${match.group}` : ''}
+          {formatStage(match) ? ` · ${formatStage(match)}` : ''}
         </p>
       </div>
 

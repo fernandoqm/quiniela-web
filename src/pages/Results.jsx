@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import confetti from 'canvas-confetti'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { useLeaderboard } from '../hooks/useLeaderboard'
+import { subscribeToUserStats } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import LeaderboardRow from '../components/leaderboard/LeaderboardRow'
 import { getPointsLabel, getPointsColor } from '../lib/scoring'
@@ -15,6 +17,31 @@ function formatDate(kickoff) {
   return toDate(kickoff).toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+function formatStage(match) {
+  const g = match.group?.replace('GROUP_', '')
+  if (g && g.length <= 2) return `Grupo ${g}`
+  const stages = {
+    LAST_16: 'Octavos de final',
+    QUARTER_FINALS: 'Cuartos de final',
+    SEMI_FINALS: 'Semifinal',
+    THIRD_PLACE: '3er lugar',
+    FINAL: '🏆 Final',
+  }
+  return stages[match.stage] || ''
+}
+
+function fireConfetti() {
+  const duration = 2500
+  const end = Date.now() + duration
+  const colors = ['#f59e0b', '#fbbf24', '#ffffff', '#4ade80']
+  const frame = () => {
+    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors })
+    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors })
+    if (Date.now() < end) requestAnimationFrame(frame)
+  }
+  frame()
+}
+
 function MatchResults({ match, roomId, user, members }) {
   const { predictions, calculateAndSave } = usePredictions(roomId, match.id)
 
@@ -25,16 +52,14 @@ function MatchResults({ match, roomId, user, members }) {
   const getAlias = (uid) => members.find((m) => m.uid === uid)?.alias || 'Jugador'
   const sorted = [...predictions].sort((a, b) => (b.points || 0) - (a.points || 0))
   const winner = sorted.find((p) => p.points !== null && p.points > 0)
-  const isFirstMatch = true // only show winner card for most recent
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      {/* Winner highlight */}
       {winner && (
         <div className="bg-win/15 border-b border-win/30 px-4 py-4 text-center">
           <img src="/copa_fifa.png" alt="Copa" className="w-10 h-10 object-contain mx-auto mb-1" />
           <p className="text-xs text-win/70 mb-0.5">
-            Partido · {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · FT
+            {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · FT
           </p>
           <p className="text-win font-black text-lg">¡{getAlias(winner.userId)} ganó!</p>
           <p className="text-xs text-win/70 mt-1">
@@ -43,18 +68,18 @@ function MatchResults({ match, roomId, user, members }) {
         </div>
       )}
 
-      {/* Match header */}
       <div className="px-4 py-3 border-b border-border">
         <p className="font-bold text-sm">
           {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName}
         </p>
-        <p className="text-xs text-muted mt-0.5">{formatDate(match.kickoff)}{match.group ? ` · ${match.group}` : ''}</p>
+        <p className="text-xs text-muted mt-0.5">
+          {formatDate(match.kickoff)}{formatStage(match) ? ` · ${formatStage(match)}` : ''}
+        </p>
       </div>
 
-      {/* Resultados del partido */}
       {sorted.length > 0 && (
         <div>
-          <p className="text-xs text-muted uppercase tracking-widest px-4 pt-3 pb-1">Resultados del partido</p>
+          <p className="text-xs text-muted uppercase tracking-widest px-4 pt-3 pb-1">Predicciones</p>
           <div className="px-4 divide-y divide-border">
             {sorted.map((pred) => (
               <div
@@ -68,9 +93,9 @@ function MatchResults({ match, roomId, user, members }) {
                 </div>
                 {pred.points !== null && (
                   <span className={`text-xs font-bold ${getPointsColor(pred.points)}`}>
-                    {pred.points === 3 ? '+3 pts · exacto!' :
-                     pred.points === 2 ? '+2 pts · empate ✓' :
-                     pred.points === 1 ? '+1 pt · resultado ✓' : '+0 pts'}
+                    {pred.points === 3 ? '+3 · exacto! 💎' :
+                     pred.points === 2 ? '+2 · empate ✓' :
+                     pred.points === 1 ? '+1 · resultado ✓' : '+0 pts'}
                   </span>
                 )}
               </div>
@@ -86,6 +111,20 @@ export default function Results({ user }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { finishedMatches, loading } = useMatches()
   const { members } = useLeaderboard(currentRoomId)
+  const [userStats, setUserStats] = useState(null)
+  const confettiFired = useRef(false)
+
+  useEffect(() => {
+    if (!currentRoomId || !user?.uid) return
+    return subscribeToUserStats(currentRoomId, user.uid, setUserStats)
+  }, [currentRoomId, user?.uid])
+
+  // Confeti al abrir Tabla si el usuario tiene exactos
+  useEffect(() => {
+    if (confettiFired.current || !userStats || userStats.exactos === 0) return
+    confettiFired.current = true
+    fireConfetti()
+  }, [userStats])
 
   if (loading) return <Spinner className="pt-20" />
 
@@ -100,7 +139,6 @@ export default function Results({ user }) {
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {/* Tabla general */}
       {members.length > 0 && (
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Tabla general</p>
@@ -121,18 +159,12 @@ export default function Results({ user }) {
         </div>
       )}
 
-      {/* Partidos finalizados */}
       {finishedMatches.length > 0 && (
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Partidos finalizados</p>
           {[...finishedMatches].reverse().map((match) => (
             <div key={match.id} className="mb-3">
-              <MatchResults
-                match={match}
-                roomId={currentRoomId}
-                user={user}
-                members={members}
-              />
+              <MatchResults match={match} roomId={currentRoomId} user={user} members={members} />
             </div>
           ))}
         </div>
