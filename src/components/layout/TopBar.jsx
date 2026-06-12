@@ -3,9 +3,10 @@ import useAppStore from '../../store/useAppStore'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
 import TrophyIcon from '../ui/TrophyIcon'
 
-export default function TopBar({ rooms, user }) {
+export default function TopBar({ rooms, user, onLogout }) {
   const { currentRoomId, setCurrentRoom } = useAppStore()
   const [open, setOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const currentRoom = rooms.find((r) => r.id === currentRoomId)
   const { members } = useLeaderboard(currentRoomId)
   const me = members.find((m) => m.uid === user?.uid)
@@ -67,14 +68,32 @@ export default function TopBar({ rooms, user }) {
           )
         })()}
 
-        {/* Avatar */}
-        {user?.photoURL ? (
-          <img src={user.photoURL} alt="avatar" className="w-7 h-7 rounded-full ring-2 ring-border" />
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-bg font-bold text-xs">
-            {user?.displayName?.[0]?.toUpperCase() || '?'}
-          </div>
-        )}
+        {/* Avatar con menú */}
+        <div className="relative">
+          <button onClick={() => setUserMenuOpen((v) => !v)}>
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="avatar" className="w-7 h-7 rounded-full ring-2 ring-border" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-gold flex items-center justify-center text-bg font-bold text-xs">
+                {user?.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+          </button>
+          {userMenuOpen && (
+            <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden z-20 shadow-xl min-w-36">
+              <div className="px-4 py-2.5 border-b border-border">
+                <p className="text-xs text-white font-medium truncate">{user?.displayName}</p>
+                <p className="text-xs text-muted truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={() => { setUserMenuOpen(false); onLogout() }}
+                className="w-full text-left px-4 py-3 text-sm text-danger hover:bg-danger/10 transition-colors"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
