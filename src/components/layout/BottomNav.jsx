@@ -56,7 +56,7 @@ function UsersIcon() {
 const tabs = [
   { to: '/', label: 'Inicio', Icon: HomeIcon },
   { to: '/predecir', label: 'Predecir', Icon: TargetIcon },
-  { to: '/tabla', label: 'Tabla', Icon: TrophyIcon },
+  { to: '/tabla', label: 'Resultados', Icon: TrophyIcon },
   { to: '/salas', label: 'Sala', Icon: UsersIcon },
 ]
 

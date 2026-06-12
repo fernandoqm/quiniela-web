@@ -260,7 +260,7 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll } = useMatches()
+  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveMatch } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
   const confettiFired = useRef(false)
 
@@ -282,6 +282,13 @@ export default function Dashboard({ user, rooms }) {
     const id = setInterval(() => refreshAll(), 3 * 60 * 1000)
     return () => clearInterval(id)
   }, [])
+
+  // Cuando hay partido en vivo, refrescar ese partido cada 60 segundos
+  useEffect(() => {
+    if (!liveMatch) return
+    const id = setInterval(() => refreshLiveMatch(liveMatch), 60 * 1000)
+    return () => clearInterval(id)
+  }, [liveMatch?.id])
 
   const handleRefresh = async () => {
     setRefreshing(true)

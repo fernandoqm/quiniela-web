@@ -47,8 +47,10 @@ function MatchResults({ match, roomId, user, members, onUserWon }) {
   const notifiedWin = useRef(false)
 
   useEffect(() => {
-    if (match.homeScore !== null) calculateAndSave(match)
-  }, [match.id])
+    if (match.homeScore === null || predictions.length === 0) return
+    const hasUnscored = predictions.some((p) => p.points === null)
+    if (hasUnscored) calculateAndSave(match)
+  }, [predictions.length, match.homeScore])
 
   const getAlias = (uid) => members.find((m) => m.uid === uid)?.alias || 'Jugador'
   const sorted = [...predictions].sort((a, b) => (b.points || 0) - (a.points || 0))

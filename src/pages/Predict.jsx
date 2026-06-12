@@ -267,8 +267,30 @@ export default function Predict({ user }) {
   const predictable = matches.filter((m) => !isLocked(m))
   const grouped = groupByDay(predictable)
 
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+  const recentLocked = matches
+    .filter((m) => isLocked(m) && toDate(m.kickoff).getTime() > oneDayAgo)
+    .sort((a, b) => toDate(b.kickoff).getTime() - toDate(a.kickoff).getTime())
+
   return (
     <div className="flex flex-col gap-4 pb-4">
+
+      {/* Partidos recientes bloqueados — en curso o terminados hoy/ayer */}
+      {recentLocked.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-muted uppercase tracking-widest">En curso / Terminados</p>
+          {recentLocked.map((m) => (
+            <MatchPredictionCard
+              key={m.id}
+              match={m}
+              roomId={currentRoomId}
+              userId={user?.uid}
+              members={members}
+            />
+          ))}
+        </div>
+      )}
+
       {Object.entries(grouped).map(([day, dayMatches]) => (
         <div key={day} className="flex flex-col gap-3">
           <p className="text-xs text-muted uppercase tracking-widest capitalize">{day}</p>
@@ -284,7 +306,7 @@ export default function Predict({ user }) {
         </div>
       ))}
 
-      {predictable.length === 0 && (
+      {predictable.length === 0 && recentLocked.length === 0 && (
         <div className="text-center py-16">
           <p className="text-3xl mb-2">🎯</p>
           <p className="text-subtle text-sm">No hay partidos disponibles para predecir</p>
