@@ -133,31 +133,6 @@ function MyStats({ roomId, userId }) {
   )
 }
 
-// ── Badge EN VIVO / Sin partido ──────────────────────────────────────
-function LiveStatusBadge() {
-  const [showTip, setShowTip] = useState(false)
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setShowTip((v) => !v)}
-        className="flex items-center gap-2 text-muted text-xs hover:text-subtle transition-colors"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a10 10 0 0 0-3.6 19.4L12 12l3.6 9.4A10 10 0 0 0 12 2z"/>
-          <path d="M2.5 8.5h5l4.5 3.5-4.5 3.5h-5M21.5 8.5h-5L12 12l4.5 3.5h5"/>
-        </svg>
-        <span>Sin partido en vivo</span>
-        <span className="text-muted/60 text-xs">ⓘ</span>
-      </button>
-      {showTip && (
-        <div className="absolute top-full left-0 mt-2 bg-card border border-border rounded-xl px-3 py-2 text-xs text-subtle z-10 shadow-xl whitespace-nowrap">
-          No hay partidos en curso ahora mismo
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Tarjeta EN VIVO ──────────────────────────────────────────────────
 function LiveCard({ match, roomId, userId }) {
@@ -327,26 +302,23 @@ export default function Dashboard({ user, rooms }) {
   return (
     <div className="flex flex-col gap-4 pb-4">
 
-      {/* EN VIVO o badge sin partido */}
-      {liveMatch
-        ? <LiveCard match={liveMatch} roomId={currentRoomId} userId={user?.uid} />
-        : (
-          <div className="flex items-center justify-between">
-            <LiveStatusBadge />
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 text-xs text-muted hover:text-subtle transition-colors disabled:opacity-40"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
-                <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
-                <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-              </svg>
-              {refreshing ? 'Actualizando...' : 'Actualizar'}
-            </button>
-          </div>
-        )
-      }
+      {/* Botón actualizar (siempre visible, discreto) */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs text-muted hover:text-subtle transition-colors disabled:opacity-40"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
+            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+            <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+          {refreshing ? 'Actualizando...' : 'Actualizar'}
+        </button>
+      </div>
+
+      {/* EN VIVO — solo aparece si hay partido activo */}
+      {liveMatch && <LiveCard match={liveMatch} roomId={currentRoomId} userId={user?.uid} />}
 
       {/* Cuenta regresiva al próximo partido */}
       {nextMatch && <NextMatchCountdown match={nextMatch} />}
