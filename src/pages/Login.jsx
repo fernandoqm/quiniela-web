@@ -1,8 +1,10 @@
+import TrophyIcon from '../components/ui/TrophyIcon'
+
 export default function Login({ onLogin }) {
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 gap-8">
       <div className="text-center">
-        <img src="/copa_fifa.png" alt="Copa FIFA" className="w-32 h-32 object-contain mx-auto mb-2 drop-shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
+        <TrophyIcon size={120} className="mx-auto mb-2 drop-shadow-[0_0_24px_rgba(245,158,11,0.4)]" />
         <h1 className="text-3xl font-black text-white">Quiniela</h1>
         <p className="text-gold font-bold text-lg">Mundial 2026</p>
         <p className="text-muted text-sm mt-2">Compite con tus amigos y familia</p>

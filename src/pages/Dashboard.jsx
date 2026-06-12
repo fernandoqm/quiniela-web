@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { subscribeToUserStats } from '../lib/firestore'
@@ -70,7 +71,7 @@ function NextMatchCountdown({ match }) {
   return (
     <div className={`border rounded-xl px-4 py-3 flex items-center justify-between gap-3 ${isFinal ? 'bg-gold/5 border-gold/30' : 'bg-card border-border'}`}>
       <div className="flex items-center gap-3 min-w-0">
-        {isFinal && <img src="/copa_fifa.png" alt="Final" className="w-10 h-10 object-contain shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />}
+        {isFinal && <TrophyIcon size={40} className="shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />}
         <div className="min-w-0">
           <p className="text-xs text-muted uppercase tracking-widest mb-1">Próximo partido</p>
           <p className="text-sm font-semibold truncate">
@@ -223,11 +224,9 @@ function MatchRow({ match }) {
             </div>
           </>
         ) : (
-          <>
-            <span className="text-xs text-gold font-medium">{formatTime(match.kickoff)}</span>
-            {stage && <div className="text-xs text-muted truncate">{stage}</div>}
-          </>
+          <span className="text-xs text-gold font-medium">{formatTime(match.kickoff)}</span>
         )}
+        {stage && <div className="text-[10px] text-muted truncate mt-0.5">{stage}</div>}
       </div>
 
       <div className="flex items-center gap-1.5 flex-1 min-w-0">

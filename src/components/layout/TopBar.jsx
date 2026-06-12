@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import useAppStore from '../../store/useAppStore'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
+import TrophyIcon from '../ui/TrophyIcon'
 
 export default function TopBar({ rooms, user }) {
   const { currentRoomId, setCurrentRoom } = useAppStore()
@@ -13,7 +14,7 @@ export default function TopBar({ rooms, user }) {
     <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
       {/* Logo */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <img src="/copa_fifa.png" alt="Copa FIFA" className="w-6 h-6 object-contain" />
+        <TrophyIcon size={22} />
         <span className="text-gold font-bold text-base tracking-tight">Quiniela</span>
       </div>
 
