@@ -273,15 +273,30 @@ function Onboarding() {
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { matches, loading, liveMatch, nextMatch, refreshAll } = useMatches()
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => { refreshAll() }, [])
 
-  // Auto-refresh cada 3 min cuando hay partido en vivo
+  // Auto-refresh cada 3 min cuando hay partido en vivo O cuando hay un partido
+  // cuyo kickoff ya pasó pero todavía aparece como TIMED (aún no se ha actualizado)
   useEffect(() => {
-    if (!liveMatch) return
+    const hasStartedMatch = matches.some(
+      (m) => m.status === 'TIMED' && toDate(m.kickoff).getTime() < Date.now()
+    )
+    if (!liveMatch && !hasStartedMatch) return
     const id = setInterval(() => refreshAll(), 3 * 60 * 1000)
     return () => clearInterval(id)
-  }, [!!liveMatch])
+  }, [!!liveMatch, matches.length])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    // Forzar refresh ignorando TTL borrando el timestamp
+    const { db } = await import('../lib/firebase')
+    const { doc, setDoc } = await import('firebase/firestore')
+    await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: new Date(0) }, { merge: true })
+    await refreshAll()
+    setRefreshing(false)
+  }
 
   if (loading) return <Spinner className="pt-20" />
 
@@ -295,7 +310,22 @@ export default function Dashboard({ user, rooms }) {
       {/* EN VIVO o badge sin partido */}
       {liveMatch
         ? <LiveCard match={liveMatch} roomId={currentRoomId} userId={user?.uid} />
-        : <LiveStatusBadge />
+        : (
+          <div className="flex items-center justify-between">
+            <LiveStatusBadge />
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-subtle transition-colors disabled:opacity-40"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
+                <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+              </svg>
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </button>
+          </div>
+        )
       }
 
       {/* Cuenta regresiva al próximo partido */}

@@ -195,11 +195,10 @@ export async function savePrediction(roomId, userId, matchId, homeScore, awaySco
 export function subscribeToUserStats(roomId, userId, callback) {
   const q = query(
     collection(db, 'predictions'),
-    where('roomId', '==', roomId),
     where('userId', '==', userId)
   )
   return onSnapshot(q, (snap) => {
-    const preds = snap.docs.map((d) => d.data())
+    const preds = snap.docs.map((d) => d.data()).filter((p) => p.roomId === roomId)
     callback({
       total: preds.length,
       points: preds.reduce((s, p) => s + (p.points || 0), 0),
