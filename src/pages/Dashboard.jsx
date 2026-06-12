@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
@@ -239,14 +240,39 @@ function MatchRow({ match }) {
   )
 }
 
+// ── Onboarding ───────────────────────────────────────────────────────
+function Onboarding() {
+  const navigate = useNavigate()
+  return (
+    <div className="flex flex-col items-center justify-center pt-16 px-6 gap-6 text-center">
+      <TrophyIcon size={96} className="drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]" />
+      <div>
+        <h2 className="text-xl font-black text-white mb-1">¡Bienvenido a la Quiniela!</h2>
+        <p className="text-muted text-sm">Crea una sala o únete a una con el código que te compartieron para empezar a predecir.</p>
+      </div>
+      <div className="w-full flex flex-col gap-3">
+        <button
+          onClick={() => navigate('/salas')}
+          className="w-full bg-gold text-bg font-bold py-3.5 rounded-xl text-sm active:scale-95 transition-all"
+        >
+          Crear o unirme a una sala
+        </button>
+      </div>
+      <p className="text-xs text-muted">Si ya tienes un código de invitación, ingrésalo en la pantalla de salas.</p>
+    </div>
+  )
+}
+
 // ── Dashboard principal ──────────────────────────────────────────────
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { matches, loading, liveMatch, nextMatch, refreshAll } = useMatches()
 
   useEffect(() => { refreshAll() }, [])
 
   if (loading) return <Spinner className="pt-20" />
+
+  if (!currentRoomId && rooms?.length === 0) return <Onboarding />
 
   const grouped = groupByDay(matches)
 

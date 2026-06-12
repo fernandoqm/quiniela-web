@@ -1,16 +1,31 @@
-import TrophyIcon from '../components/ui/TrophyIcon'
-
 export default function Login({ onLogin }) {
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 gap-8">
-      <div className="text-center">
-        <TrophyIcon size={120} className="mx-auto mb-2 drop-shadow-[0_0_24px_rgba(245,158,11,0.4)]" />
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 gap-8 relative overflow-hidden">
+
+      {/* Copa de fondo decorativa */}
+      <img
+        src="/copa_fifa.png"
+        alt=""
+        className="absolute bottom-0 right-[-60px] w-72 opacity-[0.06] pointer-events-none select-none"
+      />
+
+      {/* Copa principal */}
+      <div className="text-center relative z-10">
+        <div className="relative inline-block mb-4">
+          {/* Halo dorado detrás */}
+          <div className="absolute inset-0 rounded-full blur-3xl bg-gold/20 scale-150" />
+          <img
+            src="/copa_fifa.png"
+            alt="Copa FIFA"
+            className="relative w-44 h-44 object-contain drop-shadow-[0_0_32px_rgba(245,158,11,0.5)]"
+          />
+        </div>
         <h1 className="text-3xl font-black text-white">Quiniela</h1>
         <p className="text-gold font-bold text-lg">Mundial 2026</p>
         <p className="text-muted text-sm mt-2">Compite con tus amigos y familia</p>
       </div>
 
-      <div className="w-full max-w-xs flex flex-col gap-3">
+      <div className="w-full max-w-xs flex flex-col gap-3 relative z-10">
         <button
           onClick={onLogin}
           className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-bold py-3.5 rounded-xl text-sm active:opacity-80"
@@ -25,7 +40,7 @@ export default function Login({ onLogin }) {
         </button>
       </div>
 
-      <p className="text-xs text-muted text-center max-w-xs">
+      <p className="text-xs text-muted text-center max-w-xs relative z-10">
         Crea salas privadas y compite prediciendo marcadores del Mundial 2026
       </p>
     </div>

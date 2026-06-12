@@ -143,7 +143,13 @@ export default function Results({ user }) {
       {members.length > 0 && (
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Tabla general</p>
-          <div className="bg-card border border-border rounded-2xl px-4 py-1">
+          <div className="relative overflow-hidden bg-card border border-border rounded-2xl px-4 py-1">
+            {/* Copa marca de agua */}
+            <img
+              src="/copa_fifa.png"
+              alt=""
+              className="absolute -right-8 -bottom-4 w-36 opacity-[0.07] pointer-events-none select-none"
+            />
             {members.map((m, i) => (
               <LeaderboardRow key={m.uid} member={m} position={i} isCurrentUser={m.uid === user?.uid} />
             ))}

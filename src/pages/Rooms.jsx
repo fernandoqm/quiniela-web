@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import useAppStore from '../store/useAppStore'
 import { updateMemberAlias, deleteRoom } from '../lib/firestore'
 import Spinner from '../components/ui/Spinner'
 
 const APP_URL = 'https://fernandoqm.github.io/quiniela-web/'
 
+function validateAlias(alias) {
+  const trimmed = alias.trim()
+  if (trimmed.length < 2) return 'El alias debe tener al menos 2 caracteres'
+  if (trimmed.length > 20) return 'El alias no puede superar 20 caracteres'
+  return null
+}
+
 async function shareRoom(room) {
-  const text = `¡Únete a mi Quiniela del Mundial 2026! 🏆\nSala: ${room.name}\nCódigo: ${room.code}\n${APP_URL}`
+  const joinUrl = `${APP_URL}#/salas?code=${room.code}`
+  const text = `¡Únete a mi Quiniela del Mundial 2026! 🏆\nSala: ${room.name}\n${joinUrl}`
   if (navigator.share) {
-    await navigator.share({ title: 'Quiniela Mundial 2026', text })
+    await navigator.share({ title: 'Quiniela Mundial 2026', text, url: joinUrl })
   } else {
     await navigator.clipboard.writeText(text)
   }
@@ -33,7 +42,7 @@ function RoomItem({ room, isActive, userId, onSelect, onReload }) {
 
   const handleSaveAlias = async (e) => {
     e.stopPropagation()
-    if (!newAlias.trim()) return
+    if (validateAlias(newAlias)) return
     setSavingAlias(true)
     await updateMemberAlias(room.id, userId, newAlias.trim())
     setSavingAlias(false)
@@ -169,6 +178,7 @@ function RoomItem({ room, isActive, userId, onSelect, onReload }) {
 
 export default function Rooms({ rooms, onCreate, onJoin, loading, user, reload }) {
   const { currentRoomId, setCurrentRoom } = useAppStore()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [name, setName] = useState('')
   const [alias, setAlias] = useState('')
   const [code, setCode] = useState('')
@@ -177,8 +187,19 @@ export default function Rooms({ rooms, onCreate, onJoin, loading, user, reload }
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
 
+  // Pre-llenar código si viene por deep link (?code=ABC-123)
+  useEffect(() => {
+    const codeParam = searchParams.get('code')
+    if (codeParam) {
+      setCode(codeParam.toUpperCase())
+      setSearchParams({}, { replace: true })
+    }
+  }, [])
+
   const handleCreate = async () => {
-    if (!name.trim() || !alias.trim()) return setError('Completa el nombre y tu alias')
+    const aliasErr = validateAlias(alias)
+    if (!name.trim()) return setError('Ingresa un nombre para la sala')
+    if (aliasErr) return setError(aliasErr)
     setCreating(true); setError('')
     try {
       await onCreate(name.trim(), alias.trim())
@@ -188,7 +209,9 @@ export default function Rooms({ rooms, onCreate, onJoin, loading, user, reload }
   }
 
   const handleJoin = async () => {
-    if (!code.trim() || !joinAlias.trim()) return setError('Completa el código y tu alias')
+    const aliasErr = validateAlias(joinAlias)
+    if (aliasErr) return setError(aliasErr)
+    if (code.trim().length < 5) return setError('Ingresa el código de la sala')
     setJoining(true); setError('')
     try {
       await onJoin(code.trim(), joinAlias.trim())
