@@ -9,27 +9,10 @@ function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
 }
 
-const LOCK_AFTER_KICKOFF_MS = 5 * 60 * 1000 // 5 minutos después del inicio
-
-function lockTime(kickoff) {
-  return toDate(kickoff).getTime() + LOCK_AFTER_KICKOFF_MS
+function isLocked(match) {
+  return match.status === 'FINISHED'
 }
 
-function msToLock(kickoff) {
-  return Math.max(0, lockTime(kickoff) - Date.now())
-}
-
-function isLocked(kickoff) {
-  return Date.now() >= lockTime(kickoff)
-}
-
-function formatCountdown(ms) {
-  if (ms <= 0) return '0:00'
-  const totalSecs = Math.floor(ms / 1000)
-  const mins = Math.floor(totalSecs / 60)
-  const secs = totalSecs % 60
-  return `${mins}:${String(secs).padStart(2, '0')}`
-}
 
 function formatDay(kickoff) {
   const d = toDate(kickoff)
@@ -103,17 +86,7 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
   const [allPreds, setAllPreds] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [ms, setMs] = useState(() => msToLock(match.kickoff))
-
-  const locked = isLocked(match.kickoff)
-  const showCountdown = !locked && ms < 90 * 60 * 1000 // dentro de 90 min del cierre
-
-  // Countdown timer hasta el cierre (kickoff + 5 min)
-  useEffect(() => {
-    if (locked) return
-    const id = setInterval(() => setMs(msToLock(match.kickoff)), 1000)
-    return () => clearInterval(id)
-  }, [match.kickoff, locked])
+  const locked = isLocked(match)
 
   // Mi predicción — siempre visible (filtra por userId, pasa las reglas de Firestore)
   useEffect(() => {
@@ -155,13 +128,6 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      {/* Countdown banner */}
-      {showCountdown && (
-        <div className="bg-gold/10 border-b border-gold/20 px-4 py-2 flex items-center justify-center gap-2">
-          <span className="text-sm">⏰</span>
-          <span className="text-gold text-sm font-bold">Cierra en {formatCountdown(ms)} min</span>
-        </div>
-      )}
       {locked && (
         <div className="bg-danger/10 border-b border-danger/20 px-4 py-2 text-center">
           <span className="text-danger text-sm font-bold">🔒 Predicción cerrada</span>
@@ -274,9 +240,7 @@ export default function Predict({ user }) {
     </div>
   )
 
-  const predictable = matches.filter(
-    (m) => !isLocked(m.kickoff) || m.status === 'TIMED'
-  )
+  const predictable = matches.filter((m) => !isLocked(m))
   const grouped = groupByDay(predictable)
 
   return (
