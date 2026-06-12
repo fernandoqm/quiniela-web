@@ -33,7 +33,7 @@ function AppLayout({ user, logout }) {
 }
 
 export default function App() {
-  const { user, loading, login } = useAuth()
+  const { user, loading, login, logout } = useAuth()
 
   if (loading) return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
