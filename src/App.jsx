@@ -5,14 +5,13 @@ import TopBar from './components/layout/TopBar'
 import BottomNav from './components/layout/BottomNav'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
-import Matches from './pages/Matches'
 import Predict from './pages/Predict'
 import Results from './pages/Results'
 import Rooms from './pages/Rooms'
 import Spinner from './components/ui/Spinner'
 
 function AppLayout({ user }) {
-  const { rooms, loading, handleCreate, handleJoin } = useRoom(user)
+  const { rooms, loading, handleCreate, handleJoin, reload } = useRoom(user)
 
   return (
     <div className="min-h-screen bg-bg text-white">
@@ -20,11 +19,10 @@ function AppLayout({ user }) {
       <main className="max-w-lg mx-auto px-4 pt-4 pb-24">
         <Routes>
           <Route path="/" element={<Dashboard user={user} rooms={rooms} />} />
-          <Route path="/partidos" element={<Matches />} />
           <Route path="/predecir" element={<Predict user={user} />} />
           <Route path="/tabla" element={<Results user={user} />} />
           <Route path="/salas" element={
-            <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} />
+            <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} user={user} reload={reload} />
           } />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

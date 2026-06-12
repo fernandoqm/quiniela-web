@@ -1,149 +1,291 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMatches } from '../hooks/useMatches'
-import { usePredictions } from '../hooks/usePredictions'
 import { useLeaderboard } from '../hooks/useLeaderboard'
+import { subscribeToMyPrediction, subscribeToPredictions, savePrediction } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
-import ScoreSelector from '../components/match/ScoreSelector'
-import PredictionList from '../components/prediction/PredictionList'
-import Button from '../components/ui/Button'
 import Spinner from '../components/ui/Spinner'
 
 function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
 }
 
-function isLocked(kickoff) {
-  return Date.now() >= toDate(kickoff).getTime() - 5 * 60 * 1000
+const LOCK_AFTER_KICKOFF_MS = 5 * 60 * 1000 // 5 minutos después del inicio
+
+function lockTime(kickoff) {
+  return toDate(kickoff).getTime() + LOCK_AFTER_KICKOFF_MS
 }
 
-function formatDate(kickoff) {
-  return toDate(kickoff).toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' })
+function msToLock(kickoff) {
+  return Math.max(0, lockTime(kickoff) - Date.now())
+}
+
+function isLocked(kickoff) {
+  return Date.now() >= lockTime(kickoff)
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return '0:00'
+  const totalSecs = Math.floor(ms / 1000)
+  const mins = Math.floor(totalSecs / 60)
+  const secs = totalSecs % 60
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
+
+function formatDay(kickoff) {
+  const d = toDate(kickoff)
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  if (d.toDateString() === today.toDateString()) return 'Hoy'
+  if (d.toDateString() === tomorrow.toDateString()) return 'Mañana'
+  return d.toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'short' })
 }
 
 function formatTime(kickoff) {
   return toDate(kickoff).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function Predict({ user }) {
-  const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { upcomingMatches, liveMatch, loading } = useMatches()
-  const [selectedMatch, setSelectedMatch] = useState(null)
-  const [homeScore, setHomeScore] = useState(0)
-  const [awayScore, setAwayScore] = useState(0)
+function groupByDay(matches) {
+  return matches.reduce((acc, m) => {
+    const day = formatDay(m.kickoff)
+    if (!acc[day]) acc[day] = []
+    acc[day].push(m)
+    return acc
+  }, {})
+}
+
+function ScoreCircle({ value, onChange, disabled }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={() => onChange(Math.min(20, value + 1))}
+        disabled={disabled}
+        className="w-9 h-9 flex items-center justify-center text-subtle text-xl font-bold rounded-xl hover:text-white transition-colors disabled:opacity-30"
+      >
+        +
+      </button>
+      <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center transition-colors ${
+        disabled ? 'border-border bg-card/40' : 'border-gold bg-card shadow-lg shadow-gold/10'
+      }`}>
+        <span className={`text-3xl font-black tabular-nums ${disabled ? 'text-muted' : 'text-white'}`}>
+          {value}
+        </span>
+      </div>
+      <button
+        onClick={() => onChange(Math.max(0, value - 1))}
+        disabled={disabled}
+        className="w-9 h-9 flex items-center justify-center text-subtle text-xl font-bold rounded-xl hover:text-white transition-colors disabled:opacity-30"
+      >
+        −
+      </button>
+    </div>
+  )
+}
+
+function MatchPredictionCard({ match, roomId, userId, members }) {
+  const matchId = match.id
+  const [home, setHome] = useState(0)
+  const [away, setAway] = useState(0)
+  const [myPred, setMyPred] = useState(null)
+  const [allPreds, setAllPreds] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [ms, setMs] = useState(() => msToLock(match.kickoff))
 
-  const match = selectedMatch || liveMatch || upcomingMatches[0] || null
-  const matchId = match?.id || match?.apiId
+  const locked = isLocked(match.kickoff)
+  const showCountdown = !locked && ms < 90 * 60 * 1000 // dentro de 90 min del cierre
 
-  const { predictions, submitPrediction } = usePredictions(currentRoomId, matchId)
-  const { members } = useLeaderboard(currentRoomId)
+  // Countdown timer hasta el cierre (kickoff + 5 min)
+  useEffect(() => {
+    if (locked) return
+    const id = setInterval(() => setMs(msToLock(match.kickoff)), 1000)
+    return () => clearInterval(id)
+  }, [match.kickoff, locked])
 
-  const locked = match ? isLocked(match.kickoff) || match.status !== 'TIMED' : true
-  const myPred = predictions.find((p) => p.userId === user?.uid)
-  const matchStarted = match?.status !== 'TIMED'
+  // Mi predicción — siempre visible (filtra por userId, pasa las reglas de Firestore)
+  useEffect(() => {
+    if (!roomId || !matchId || !userId) return
+    const unsub = subscribeToMyPrediction(roomId, matchId, userId, (pred) => {
+      if (pred) {
+        setMyPred(pred)
+        setHome(pred.homeScore)
+        setAway(pred.awayScore)
+      } else {
+        setMyPred(null)
+        setHome(0)
+        setAway(0)
+      }
+    })
+    return unsub
+  }, [roomId, matchId, userId])
 
-  const handleSubmit = async () => {
-    if (!currentRoomId || !matchId || locked) return
+  // Predicciones de la sala — solo cuando el partido ya comenzó
+  useEffect(() => {
+    if (!roomId || !matchId || match.status === 'TIMED') return
+    const unsub = subscribeToPredictions(roomId, matchId, (preds) => {
+      setAllPreds(preds)
+    })
+    return unsub
+  }, [roomId, matchId, match.status])
+
+  const handleSave = async () => {
+    if (locked || saving) return
     setSaving(true)
-    await submitPrediction(user.uid, homeScore, awayScore)
+    await savePrediction(roomId, userId, matchId, home, away)
     setSaved(true)
     setSaving(false)
-    setTimeout(() => setSaved(false), 2000)
+    setTimeout(() => setSaved(false), 2500)
   }
+
+  const matchStarted = match.status !== 'TIMED'
+  const othersVisible = matchStarted
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {/* Countdown banner */}
+      {showCountdown && (
+        <div className="bg-gold/10 border-b border-gold/20 px-4 py-2 flex items-center justify-center gap-2">
+          <span className="text-sm">⏰</span>
+          <span className="text-gold text-sm font-bold">Cierra en {formatCountdown(ms)} min</span>
+        </div>
+      )}
+      {locked && (
+        <div className="bg-danger/10 border-b border-danger/20 px-4 py-2 text-center">
+          <span className="text-danger text-sm font-bold">🔒 Predicción cerrada</span>
+        </div>
+      )}
+
+      <div className="px-4 pt-3 pb-1 text-center">
+        <p className="text-sm font-semibold">
+          <span className="text-muted">{match.homeTeam?.tla || ''} </span>
+          {match.homeTeam?.shortName} vs {match.awayTeam?.shortName}
+          <span className="text-muted"> {match.awayTeam?.tla || ''}</span>
+        </p>
+        <p className="text-xs text-muted mt-0.5">
+          {formatDay(match.kickoff)} {formatTime(match.kickoff)}
+          {match.group ? ` · ${match.group}` : ''}
+        </p>
+      </div>
+
+      {/* Score selectors */}
+      <div className="px-4 py-4">
+        <p className="text-xs text-muted text-center mb-4">¿Cuál será el marcador final?</p>
+        <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col items-center gap-1">
+            {match.homeTeam?.crest && (
+              <img src={match.homeTeam.crest} alt="" className="w-7 h-7 object-contain" />
+            )}
+            <span className="text-xs text-subtle">{match.homeTeam?.shortName}</span>
+            <ScoreCircle value={home} onChange={setHome} disabled={locked} />
+          </div>
+
+          <span className="text-2xl text-muted font-black pb-4">—</span>
+
+          <div className="flex flex-col items-center gap-1">
+            {match.awayTeam?.crest && (
+              <img src={match.awayTeam.crest} alt="" className="w-7 h-7 object-contain" />
+            )}
+            <span className="text-xs text-subtle">{match.awayTeam?.shortName}</span>
+            <ScoreCircle value={away} onChange={setAway} disabled={locked} />
+          </div>
+        </div>
+
+        {/* Save button */}
+        {!locked && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`mt-4 w-full py-3.5 rounded-xl font-bold text-sm transition-all ${
+              saved
+                ? 'bg-win/20 text-win border border-win/30'
+                : 'bg-gold text-bg hover:bg-gold/90 active:scale-95'
+            }`}
+          >
+            {saving ? 'Guardando...' : saved ? '✓ Predicción guardada' : 'Confirmar predicción ✓'}
+          </button>
+        )}
+
+        {myPred && locked && (
+          <div className="mt-3 flex justify-center">
+            <span className="bg-surface border border-border text-xs text-gold px-4 py-1.5 rounded-full">
+              Tu predicción: {myPred.homeScore}–{myPred.awayScore}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Predicciones de la sala (visibles al iniciar el partido) */}
+      {othersVisible && members.length > 0 && (
+        <div className="border-t border-border px-4 py-3">
+          <p className="text-xs text-muted uppercase tracking-widest mb-2">Predicciones de tu sala</p>
+          <div className="flex flex-col gap-1.5">
+            {members.map((member) => {
+              const pred = allPreds.find((p) => p.userId === member.uid)
+              const isMe = member.uid === userId
+              return (
+                <div key={member.uid} className="flex items-center justify-between">
+                  <span className={`text-sm ${isMe ? 'text-gold font-semibold' : 'text-subtle'}`}>
+                    {isMe ? 'Tú' : member.alias}
+                  </span>
+                  {pred ? (
+                    <span className={`text-sm font-bold flex items-center gap-1 ${isMe ? 'text-gold' : 'text-white'}`}>
+                      {pred.homeScore} – {pred.awayScore}
+                      {isMe && <span className="text-xs">✏️</span>}
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-gold/15 text-gold border border-gold/25 px-2 py-0.5 rounded-full">
+                      Aún no
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Predict({ user }) {
+  const currentRoomId = useAppStore((s) => s.currentRoomId)
+  const { matches, loading } = useMatches()
+  const { members } = useLeaderboard(currentRoomId)
 
   if (loading) return <Spinner className="pt-20" />
 
   if (!currentRoomId) return (
     <div className="flex flex-col items-center justify-center pt-20 gap-3 px-6 text-center">
       <p className="text-3xl">👥</p>
-      <p className="text-subtle">Únete a una sala primero para poder predecir</p>
+      <p className="text-subtle text-sm">Únete a una sala para predecir</p>
     </div>
   )
 
-  const availableMatches = [...(liveMatch ? [liveMatch] : []), ...upcomingMatches]
+  const predictable = matches.filter(
+    (m) => !isLocked(m.kickoff) || m.status === 'TIMED'
+  )
+  const grouped = groupByDay(predictable)
 
   return (
     <div className="flex flex-col gap-4 pb-4">
-      {/* Match selector */}
-      {availableMatches.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-          {availableMatches.map((m) => (
-            <button
+      {Object.entries(grouped).map(([day, dayMatches]) => (
+        <div key={day} className="flex flex-col gap-3">
+          <p className="text-xs text-muted uppercase tracking-widest capitalize">{day}</p>
+          {dayMatches.map((m) => (
+            <MatchPredictionCard
               key={m.id}
-              onClick={() => setSelectedMatch(m)}
-              className={`shrink-0 text-xs px-3 py-2 rounded-xl border ${(match?.id === m.id) ? 'border-gold text-gold bg-gold/10' : 'border-border text-muted bg-card'}`}
-            >
-              {m.homeTeam?.shortName} vs {m.awayTeam?.shortName}
-            </button>
+              match={m}
+              roomId={currentRoomId}
+              userId={user?.uid}
+              members={members}
+            />
           ))}
         </div>
-      )}
+      ))}
 
-      {match ? (
-        <>
-          {/* Match header */}
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3">
-              {match.homeTeam.crest && <img src={match.homeTeam.crest} alt="" className="w-8 h-8 object-contain" />}
-              <p className="font-bold text-base">{match.homeTeam.shortName} vs {match.awayTeam.shortName}</p>
-              {match.awayTeam.crest && <img src={match.awayTeam.crest} alt="" className="w-8 h-8 object-contain" />}
-            </div>
-            <p className="text-xs text-muted mt-1">{formatDate(match.kickoff)} · {formatTime(match.kickoff)} · {match.group}</p>
-          </div>
-
-          {/* Lock warning */}
-          {!locked && (
-            <div className="bg-gold/10 border border-gold/20 rounded-xl px-4 py-2 text-xs text-gold text-center">
-              ⏰ Cierra en menos de 5 minutos
-            </div>
-          )}
-          {locked && match.status === 'TIMED' && (
-            <div className="bg-danger/10 border border-danger/20 rounded-xl px-4 py-2 text-xs text-danger text-center">
-              🔒 Predicciones cerradas
-            </div>
-          )}
-
-          {/* Score selector */}
-          <div className="bg-card border border-border rounded-2xl p-4">
-            <p className="text-xs text-muted text-center mb-3">¿Cuál será el marcador final?</p>
-            <div className="flex justify-between px-8 mb-1">
-              <span className="text-xs text-subtle">{match.homeTeam.shortName}</span>
-              <span className="text-xs text-subtle">{match.awayTeam.shortName}</span>
-            </div>
-            <ScoreSelector
-              homeScore={myPred ? myPred.homeScore : homeScore}
-              awayScore={myPred ? myPred.awayScore : awayScore}
-              onHomeChange={setHomeScore}
-              onAwayChange={setAwayScore}
-              disabled={locked || !!myPred}
-            />
-            {!myPred && !locked && (
-              <Button onClick={handleSubmit} disabled={saving} className="mt-3">
-                {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Confirmar predicción ✓'}
-              </Button>
-            )}
-            {myPred && !locked && (
-              <p className="text-center text-xs text-gold mt-3">✓ Predicción guardada</p>
-            )}
-          </div>
-
-          {/* Others predictions */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs text-muted uppercase tracking-widest mb-3">
-              {matchStarted ? 'Predicciones de la sala' : 'Tu sala'}
-            </p>
-            <PredictionList
-              predictions={predictions}
-              members={members}
-              matchStarted={matchStarted}
-              currentUserId={user?.uid}
-            />
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center pt-20 gap-3 text-center">
-          <p className="text-3xl">📅</p>
+      {predictable.length === 0 && (
+        <div className="text-center py-16">
+          <p className="text-3xl mb-2">🎯</p>
           <p className="text-subtle text-sm">No hay partidos disponibles para predecir</p>
         </div>
       )}

@@ -53,6 +53,7 @@ export function mapApiMatch(m) {
     htAwayScore: m.score?.halfTime?.away ?? null,
     group: m.group || '',
     stage: m.stage || '',
+    minute: m.minute ?? null,
   }
 }
 

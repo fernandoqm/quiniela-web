@@ -78,14 +78,40 @@ async function getUserRooms(userId) {
   return snap.exists() ? snap.data().rooms || [] : []
 }
 
+export async function updateMemberAlias(roomId, userId, newAlias) {
+  await updateDoc(doc(db, 'rooms', roomId, 'members', userId), { alias: newAlias })
+}
+
+export async function deleteRoom(roomId, userId) {
+  const membersSnap = await getDocs(collection(db, 'rooms', roomId, 'members'))
+  const batch = writeBatch(db)
+  membersSnap.docs.forEach((d) => batch.delete(d.ref))
+  batch.delete(doc(db, 'rooms', roomId))
+  await batch.commit()
+  const userSnap = await getDoc(doc(db, 'users', userId))
+  if (userSnap.exists()) {
+    const remaining = (userSnap.data().rooms || []).filter((id) => id !== roomId)
+    await updateDoc(doc(db, 'users', userId), { rooms: remaining })
+  }
+}
+
 export async function getRoomsByUser(userId) {
   const snap = await getDoc(doc(db, 'users', userId))
   if (!snap.exists()) return []
   const roomIds = snap.data().rooms || []
   const rooms = await Promise.all(
     roomIds.map(async (id) => {
-      const r = await getDoc(doc(db, 'rooms', id))
-      return r.exists() ? { id: r.id, ...r.data() } : null
+      const [r, m] = await Promise.all([
+        getDoc(doc(db, 'rooms', id)),
+        getDoc(doc(db, 'rooms', id, 'members', userId)),
+      ])
+      if (!r.exists()) return null
+      return {
+        id: r.id,
+        ...r.data(),
+        myAlias: m.exists() ? m.data().alias : '',
+        myPoints: m.exists() ? (m.data().totalPoints ?? 0) : 0,
+      }
     })
   )
   return rooms.filter(Boolean)
@@ -99,6 +125,20 @@ export function subscribeToLeaderboard(roomId, callback) {
   return onSnapshot(q, (snap) =>
     callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() })))
   )
+}
+
+// ── Meta / TTL ─────────────────────────────────────────────────────────
+const TTL_MS = 5 * 60 * 1000 // 5 minutos
+
+export async function shouldRefresh() {
+  const snap = await getDoc(doc(db, 'meta', 'state'))
+  if (!snap.exists()) return true
+  const last = snap.data().lastRefreshed?.toDate?.() || new Date(0)
+  return Date.now() - last.getTime() > TTL_MS
+}
+
+export async function markRefreshed() {
+  await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: serverTimestamp() }, { merge: true })
 }
 
 // ── Matches ────────────────────────────────────────────────────────────
@@ -149,6 +189,36 @@ export async function savePrediction(roomId, userId, matchId, homeScore, awaySco
     awayScore,
     points: null,
     submittedAt: serverTimestamp(),
+  })
+}
+
+export function subscribeToUserStats(roomId, userId, callback) {
+  const q = query(
+    collection(db, 'predictions'),
+    where('roomId', '==', roomId),
+    where('userId', '==', userId)
+  )
+  return onSnapshot(q, (snap) => {
+    const preds = snap.docs.map((d) => d.data())
+    callback({
+      total: preds.length,
+      points: preds.reduce((s, p) => s + (p.points || 0), 0),
+      exactos: preds.filter((p) => p.points === 3).length,
+      aciertos: preds.filter((p) => p.points >= 1).length,
+    })
+  })
+}
+
+export function subscribeToMyPrediction(roomId, matchId, userId, callback) {
+  const q = query(
+    collection(db, 'predictions'),
+    where('roomId', '==', roomId),
+    where('matchId', '==', String(matchId)),
+    where('userId', '==', userId)
+  )
+  return onSnapshot(q, (snap) => {
+    const doc = snap.docs[0]
+    callback(doc ? { id: doc.id, ...doc.data() } : null)
   })
 }
 

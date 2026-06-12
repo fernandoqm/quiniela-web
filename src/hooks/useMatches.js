@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { subscribeToMatches, saveMatches, saveMatch } from '../lib/firestore'
+import { subscribeToMatches, saveMatches, saveMatch, shouldRefresh, markRefreshed } from '../lib/firestore'
 import { fetchAllMatches, fetchMatchById, isMatchWindow } from '../lib/footballApi'
 
 const CACHE_TTL = 60 * 1000 // 60 seconds
@@ -19,8 +19,10 @@ export function useMatches() {
 
   const refreshAll = useCallback(async () => {
     try {
+      if (!(await shouldRefresh())) return
       const apiMatches = await fetchAllMatches()
       await saveMatches(apiMatches)
+      await markRefreshed()
     } catch (e) {
       console.error('Error cargando partidos:', e)
     }
