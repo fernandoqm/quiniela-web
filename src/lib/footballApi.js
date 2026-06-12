@@ -1,27 +1,32 @@
-const BASE_URL = 'https://api.football-data.org/v4'
+const API_BASE = 'https://api.football-data.org/v4'
 const COMPETITION_ID = '2000' // FIFA World Cup
 const API_KEY = import.meta.env.VITE_FOOTBALL_API_KEY
+const PROXY = 'https://corsproxy.io/?url='
 
-const headers = { 'X-Auth-Token': API_KEY }
+function buildUrl(path) {
+  const url = `${API_BASE}${path}`
+  return import.meta.env.DEV ? url : `${PROXY}${encodeURIComponent(url)}`
+}
+
+async function apiFetch(path) {
+  const url = buildUrl(path)
+  const res = await fetch(url, { headers: { 'X-Auth-Token': API_KEY } })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
 
 export async function fetchAllMatches() {
-  const res = await fetch(`${BASE_URL}/competitions/${COMPETITION_ID}/matches`, { headers })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  const data = await res.json()
+  const data = await apiFetch(`/competitions/${COMPETITION_ID}/matches`)
   return data.matches.map(mapApiMatch)
 }
 
 export async function fetchLiveMatches() {
-  const res = await fetch(`${BASE_URL}/competitions/${COMPETITION_ID}/matches?status=IN_PLAY,PAUSED`, { headers })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  const data = await res.json()
+  const data = await apiFetch(`/competitions/${COMPETITION_ID}/matches?status=IN_PLAY,PAUSED`)
   return data.matches.map(mapApiMatch)
 }
 
 export async function fetchMatchById(apiId) {
-  const res = await fetch(`${BASE_URL}/matches/${apiId}`, { headers })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  const data = await res.json()
+  const data = await apiFetch(`/matches/${apiId}`)
   return mapApiMatch(data)
 }
 
