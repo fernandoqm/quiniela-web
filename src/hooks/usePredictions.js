@@ -19,9 +19,12 @@ export function usePredictions(roomId, matchId) {
     await savePrediction(roomId, userId, matchId, homeScore, awayScore)
   }
 
-  const calculateAndSave = async (match) => {
+  const calculateAndSave = async (match, onlyUserId = null) => {
     if (!match || match.homeScore === null) return
-    for (const pred of predictions) {
+    const toScore = onlyUserId
+      ? predictions.filter((p) => p.userId === onlyUserId)
+      : predictions
+    for (const pred of toScore) {
       if (pred.points !== null) continue
       const pts = calculatePoints(pred, match)
       if (pts !== null) {

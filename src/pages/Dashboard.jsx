@@ -260,13 +260,22 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveMatch } = useMatches()
+  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
   const confettiFired = useRef(false)
 
   const lastFinished = finishedMatches[finishedMatches.length - 1] || null
-  const { predictions: lastMatchPreds } = usePredictions(currentRoomId, lastFinished?.id)
+  const { predictions: lastMatchPreds, calculateAndSave: calcLastMatch } = usePredictions(currentRoomId, lastFinished?.id)
 
+  // Auto-scoring: calcular puntos propios cuando carga el último partido terminado
+  useEffect(() => {
+    if (!lastFinished || !user?.uid || lastMatchPreds.length === 0) return
+    if (lastFinished.homeScore === null) return
+    const myPred = lastMatchPreds.find((p) => p.userId === user.uid)
+    if (myPred && myPred.points === null) calcLastMatch(lastFinished, user.uid)
+  }, [lastMatchPreds.length, lastFinished?.id])
+
+  // Confeti si ganó el último partido
   useEffect(() => {
     if (confettiFired.current || liveMatch || !lastFinished || lastMatchPreds.length === 0) return
     const sorted = [...lastMatchPreds].sort((a, b) => (b.points || 0) - (a.points || 0))
@@ -283,10 +292,11 @@ export default function Dashboard({ user, rooms }) {
     return () => clearInterval(id)
   }, [])
 
-  // Cuando hay partido en vivo, refrescar ese partido cada 60 segundos
+  // Cuando hay partido en vivo, refrescar cada 90s usando TTL compartido
   useEffect(() => {
     if (!liveMatch) return
-    const id = setInterval(() => refreshLiveMatch(liveMatch), 60 * 1000)
+    const id = setInterval(() => refreshLiveShared(liveMatch.apiId), 90 * 1000)
+    refreshLiveShared(liveMatch.apiId)
     return () => clearInterval(id)
   }, [liveMatch?.id])
 

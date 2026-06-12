@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { subscribeToMatches, saveMatches, saveMatch, shouldRefresh, markRefreshed } from '../lib/firestore'
+import { subscribeToMatches, saveMatches, saveMatch, shouldRefresh, markRefreshed, shouldRefreshLive, markLiveRefreshed } from '../lib/firestore'
 import { fetchAllMatches, fetchMatchById, isMatchWindow } from '../lib/footballApi'
 
 const CACHE_TTL = 60 * 1000 // 60 seconds
@@ -40,10 +40,23 @@ export function useMatches() {
     }
   }, [])
 
+  // Refresh compartido entre todos los usuarios via Firestore TTL (90s)
+  const refreshLiveShared = useCallback(async (apiId) => {
+    if (!apiId) return
+    try {
+      if (!(await shouldRefreshLive())) return
+      await markLiveRefreshed()
+      const updated = await fetchMatchById(apiId)
+      await saveMatch(updated)
+    } catch (e) {
+      console.error('Error actualizando partido en vivo:', e)
+    }
+  }, [])
+
   const liveMatch = matches.find((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
   const upcomingMatches = matches.filter((m) => m.status === 'TIMED')
   const finishedMatches = matches.filter((m) => m.status === 'FINISHED')
   const nextMatch = upcomingMatches[0] || null
 
-  return { matches, loading, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch }
+  return { matches, loading, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared }
 }

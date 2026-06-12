@@ -145,6 +145,19 @@ export async function resetTTL() {
   await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: new Date(0) }, { merge: true })
 }
 
+const LIVE_TTL_MS = 90 * 1000 // 90 segundos para partido en vivo
+
+export async function shouldRefreshLive() {
+  const snap = await getDoc(doc(db, 'meta', 'state'))
+  if (!snap.exists()) return true
+  const last = snap.data().liveLastRefreshed?.toDate?.() || new Date(0)
+  return Date.now() - last.getTime() > LIVE_TTL_MS
+}
+
+export async function markLiveRefreshed() {
+  await setDoc(doc(db, 'meta', 'state'), { liveLastRefreshed: serverTimestamp() }, { merge: true })
+}
+
 // ── Matches ────────────────────────────────────────────────────────────
 export async function saveMatch(match) {
   const id = String(match.apiId)
