@@ -128,7 +128,7 @@ export function subscribeToLeaderboard(roomId, callback) {
 }
 
 // ── Meta / TTL ─────────────────────────────────────────────────────────
-const TTL_MS = 5 * 60 * 1000 // 5 minutos
+const TTL_MS = 3 * 60 * 1000 // 3 minutos
 
 export async function shouldRefresh() {
   const snap = await getDoc(doc(db, 'meta', 'state'))

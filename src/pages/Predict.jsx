@@ -9,8 +9,11 @@ function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
 }
 
+const LOCK_AFTER_KICKOFF_MS = 5 * 60 * 1000
+
 function isLocked(match) {
-  return match.status === 'FINISHED'
+  if (match.status === 'FINISHED') return true
+  return Date.now() >= toDate(match.kickoff).getTime() + LOCK_AFTER_KICKOFF_MS
 }
 
 

@@ -276,6 +276,13 @@ export default function Dashboard({ user, rooms }) {
 
   useEffect(() => { refreshAll() }, [])
 
+  // Auto-refresh cada 3 min cuando hay partido en vivo
+  useEffect(() => {
+    if (!liveMatch) return
+    const id = setInterval(() => refreshAll(), 3 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [!!liveMatch])
+
   if (loading) return <Spinner className="pt-20" />
 
   if (!currentRoomId && rooms?.length === 0) return <Onboarding />
