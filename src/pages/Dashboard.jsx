@@ -267,12 +267,12 @@ export default function Dashboard({ user, rooms }) {
   const lastFinished = finishedMatches[finishedMatches.length - 1] || null
   const { predictions: lastMatchPreds, calculateAndSave: calcLastMatch } = usePredictions(currentRoomId, lastFinished?.id)
 
-  // Auto-scoring: calcular puntos propios cuando carga el último partido terminado
+  // Auto-scoring: calcular puntos de todos cuando carga el último partido terminado
   useEffect(() => {
-    if (!lastFinished || !user?.uid || lastMatchPreds.length === 0) return
+    if (!lastFinished || lastMatchPreds.length === 0) return
     if (lastFinished.homeScore === null) return
-    const myPred = lastMatchPreds.find((p) => p.userId === user.uid)
-    if (myPred && myPred.points === null) calcLastMatch(lastFinished, user.uid)
+    const hasUnscored = lastMatchPreds.some((p) => p.points === null)
+    if (hasUnscored) calcLastMatch(lastFinished)
   }, [lastMatchPreds.length, lastFinished?.id])
 
   // Confeti si ganó el último partido

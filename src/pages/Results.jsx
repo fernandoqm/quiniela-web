@@ -48,33 +48,38 @@ function MatchResults({ match, roomId, user, members, onUserWon }) {
 
   useEffect(() => {
     if (match.homeScore === null || predictions.length === 0) return
-    const myPred = predictions.find((p) => p.userId === user?.uid)
-    if (myPred && myPred.points === null) calculateAndSave(match, user?.uid)
-  }, [predictions.length, match.homeScore, user?.uid])
+    const hasUnscored = predictions.some((p) => p.points === null)
+    if (hasUnscored) calculateAndSave(match)
+  }, [predictions.length, match.homeScore])
 
   const getAlias = (uid) => members.find((m) => m.uid === uid)?.alias || 'Jugador'
   const sorted = [...predictions].sort((a, b) => (b.points || 0) - (a.points || 0))
-  const winner = sorted.find((p) => p.points !== null && p.points > 0)
+  const topPoints = sorted[0]?.points ?? 0
+  const winners = topPoints > 0 ? sorted.filter((p) => p.points === topPoints) : []
 
   useEffect(() => {
-    if (!onUserWon || !winner || notifiedWin.current) return
-    if (winner.userId === user?.uid) {
+    if (!onUserWon || winners.length === 0 || notifiedWin.current) return
+    if (winners.some((w) => w.userId === user?.uid)) {
       notifiedWin.current = true
       onUserWon()
     }
-  }, [winner?.userId])
+  }, [winners.length])
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      {winner && (
+      {winners.length > 0 && (
         <div className="bg-win/15 border-b border-win/30 px-4 py-4 text-center">
           <TrophyIcon size={40} className="mx-auto mb-1" />
           <p className="text-xs text-win/70 mb-0.5">
             {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · FT
           </p>
-          <p className="text-win font-black text-lg">¡{getAlias(winner.userId)} ganó!</p>
+          <p className="text-win font-black text-lg">
+            {winners.length === 1
+              ? `¡${getAlias(winners[0].userId)} ganó!`
+              : `¡${winners.map((w) => getAlias(w.userId)).join(' y ')} ganaron!`}
+          </p>
           <p className="text-xs text-win/70 mt-1">
-            Predijo {winner.homeScore}–{winner.awayScore} · {getPointsLabel(winner.points)}
+            Predijeron {winners[0].homeScore}–{winners[0].awayScore} · {getPointsLabel(winners[0].points)}
           </p>
         </div>
       )}
@@ -98,7 +103,7 @@ function MatchResults({ match, roomId, user, members, onUserWon }) {
                 className={`flex items-center justify-between py-2.5 ${pred.userId === user?.uid ? 'text-gold' : 'text-white'}`}
               >
                 <div className="flex items-center gap-2">
-                  {pred.userId === winner?.userId && <span className="text-sm">🥇</span>}
+                  {winners.some((w) => w.userId === pred.userId) && <span className="text-sm">🥇</span>}
                   <span className="text-sm font-medium">{getAlias(pred.userId)}</span>
                   <span className="text-xs text-muted">{pred.homeScore}–{pred.awayScore}</span>
                 </div>
