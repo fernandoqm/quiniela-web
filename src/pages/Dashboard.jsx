@@ -302,18 +302,11 @@ export default function Dashboard({ user, rooms }) {
     }
   }, [lastMatchPreds.length, liveMatch])
 
-  useEffect(() => { refreshAll() }, [])
-
-  // Auto-refresh cada 3 min cuando hay partido en vivo O cuando hay un partido
-  // cuyo kickoff ya pasó pero todavía aparece como TIMED (aún no se ha actualizado)
   useEffect(() => {
-    const hasStartedMatch = matches.some(
-      (m) => m.status === 'TIMED' && toDate(m.kickoff).getTime() < Date.now()
-    )
-    if (!liveMatch && !hasStartedMatch) return
+    refreshAll()
     const id = setInterval(() => refreshAll(), 3 * 60 * 1000)
     return () => clearInterval(id)
-  }, [!!liveMatch, matches.length])
+  }, [])
 
   const handleRefresh = async () => {
     setRefreshing(true)
