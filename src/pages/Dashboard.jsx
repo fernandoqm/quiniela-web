@@ -247,7 +247,7 @@ function Onboarding() {
     <div className="flex flex-col gap-4">
       {/* Banner con imagen */}
       <div className="relative rounded-2xl overflow-hidden h-48">
-        <img src="/mundial.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-left" />
+        <img src={`${import.meta.env.BASE_URL}mundial.jpg`} alt="" className="absolute inset-0 w-full h-full object-cover object-left" />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
         <div className="absolute bottom-4 left-4">
           <h2 className="text-xl font-black text-white">¡Bienvenido!</h2>

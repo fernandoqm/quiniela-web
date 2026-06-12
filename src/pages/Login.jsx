@@ -4,7 +4,7 @@ export default function Login({ onLogin }) {
 
       {/* Imagen de fondo */}
       <img
-        src="/mundial.jpg"
+        src={`${import.meta.env.BASE_URL}mundial.jpg`}
         alt=""
         className="absolute inset-0 w-full h-full object-cover object-left pointer-events-none"
       />
