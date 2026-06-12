@@ -1,7 +1,7 @@
 import {
   doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc,
   collection, query, where, orderBy, getDocs,
-  onSnapshot, serverTimestamp, increment, writeBatch
+  onSnapshot, serverTimestamp, increment, writeBatch, arrayUnion
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -189,6 +189,9 @@ export async function savePrediction(roomId, userId, matchId, homeScore, awaySco
     awayScore,
     points: null,
     submittedAt: serverTimestamp(),
+  })
+  await updateDoc(doc(db, 'rooms', roomId, 'members', userId), {
+    predictedMatches: arrayUnion(String(matchId)),
   })
 }
 

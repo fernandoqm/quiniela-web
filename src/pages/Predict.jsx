@@ -90,6 +90,9 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const locked = isLocked(match)
+  const predictedCount = members.filter((m) =>
+    m.predictedMatches?.includes(String(matchId))
+  ).length
 
   // Mi predicción — siempre visible (filtra por userId, pasa las reglas de Firestore)
   useEffect(() => {
@@ -137,16 +140,34 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
         </div>
       )}
 
-      <div className="px-4 pt-3 pb-1 text-center">
-        <p className="text-sm font-semibold">
-          <span className="text-muted">{match.homeTeam?.tla || ''} </span>
-          {match.homeTeam?.shortName} vs {match.awayTeam?.shortName}
-          <span className="text-muted"> {match.awayTeam?.tla || ''}</span>
-        </p>
-        <p className="text-xs text-muted mt-0.5">
-          {formatDay(match.kickoff)} {formatTime(match.kickoff)}
-          {formatStage(match) ? ` · ${formatStage(match)}` : ''}
-        </p>
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 text-center">
+            <p className="text-sm font-semibold">
+              <span className="text-muted">{match.homeTeam?.tla || ''} </span>
+              {match.homeTeam?.shortName} vs {match.awayTeam?.shortName}
+              <span className="text-muted"> {match.awayTeam?.tla || ''}</span>
+            </p>
+            <p className="text-xs text-muted mt-0.5">
+              {formatDay(match.kickoff)} {formatTime(match.kickoff)}
+              {formatStage(match) ? ` · ${formatStage(match)}` : ''}
+            </p>
+          </div>
+          {members.length > 0 && (
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                predictedCount === members.length
+                  ? 'bg-win/20 text-win'
+                  : 'bg-surface text-muted'
+              }`}>
+                {predictedCount}/{members.length}
+              </span>
+              {myPred && !locked && (
+                <span className="text-xs text-gold">✓ predicho</span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Score selectors */}
