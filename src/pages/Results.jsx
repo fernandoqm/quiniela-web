@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import confetti from 'canvas-confetti'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { useLeaderboard } from '../hooks/useLeaderboard'
-import { subscribeToUserStats } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import LeaderboardRow from '../components/leaderboard/LeaderboardRow'
 import { getPointsLabel, getPointsColor } from '../lib/scoring'
@@ -43,8 +42,9 @@ function fireConfetti() {
   frame()
 }
 
-function MatchResults({ match, roomId, user, members }) {
+function MatchResults({ match, roomId, user, members, onUserWon }) {
   const { predictions, calculateAndSave } = usePredictions(roomId, match.id)
+  const notifiedWin = useRef(false)
 
   useEffect(() => {
     if (match.homeScore !== null) calculateAndSave(match)
@@ -53,6 +53,14 @@ function MatchResults({ match, roomId, user, members }) {
   const getAlias = (uid) => members.find((m) => m.uid === uid)?.alias || 'Jugador'
   const sorted = [...predictions].sort((a, b) => (b.points || 0) - (a.points || 0))
   const winner = sorted.find((p) => p.points !== null && p.points > 0)
+
+  useEffect(() => {
+    if (!onUserWon || !winner || notifiedWin.current) return
+    if (winner.userId === user?.uid) {
+      notifiedWin.current = true
+      onUserWon()
+    }
+  }, [winner?.userId])
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -110,22 +118,16 @@ function MatchResults({ match, roomId, user, members }) {
 
 export default function Results({ user }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { finishedMatches, loading } = useMatches()
+  const { finishedMatches, liveMatch, loading } = useMatches()
   const { members } = useLeaderboard(currentRoomId)
-  const [userStats, setUserStats] = useState(null)
   const confettiFired = useRef(false)
 
-  useEffect(() => {
-    if (!currentRoomId || !user?.uid) return
-    return subscribeToUserStats(currentRoomId, user.uid, setUserStats)
-  }, [currentRoomId, user?.uid])
 
-  // Confeti al abrir Tabla si el usuario tiene exactos
-  useEffect(() => {
-    if (confettiFired.current || !userStats || userStats.exactos === 0) return
+  const handleUserWonLastMatch = () => {
+    if (confettiFired.current) return
     confettiFired.current = true
     fireConfetti()
-  }, [userStats])
+  }
 
   if (loading) return <Spinner className="pt-20" />
 
@@ -165,9 +167,15 @@ export default function Results({ user }) {
       {finishedMatches.length > 0 && (
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Partidos finalizados</p>
-          {[...finishedMatches].reverse().map((match) => (
+          {[...finishedMatches].reverse().map((match, i) => (
             <div key={match.id} className="mb-3">
-              <MatchResults match={match} roomId={currentRoomId} user={user} members={members} />
+              <MatchResults
+                match={match}
+                roomId={currentRoomId}
+                user={user}
+                members={members}
+                onUserWon={i === 0 && !liveMatch ? handleUserWonLastMatch : undefined}
+              />
             </div>
           ))}
         </div>

@@ -1,11 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { subscribeToUserStats } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import Spinner from '../components/ui/Spinner'
+
+function fireConfetti() {
+  const duration = 2500
+  const end = Date.now() + duration
+  const colors = ['#f59e0b', '#fbbf24', '#ffffff', '#4ade80']
+  const frame = () => {
+    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors })
+    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors })
+    if (Date.now() < end) requestAnimationFrame(frame)
+  }
+  frame()
+}
 
 function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
@@ -272,8 +285,22 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatch, nextMatch, refreshAll } = useMatches()
+  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
+  const confettiFired = useRef(false)
+
+  const lastFinished = finishedMatches[finishedMatches.length - 1] || null
+  const { predictions: lastMatchPreds } = usePredictions(currentRoomId, lastFinished?.id)
+
+  useEffect(() => {
+    if (confettiFired.current || liveMatch || !lastFinished || lastMatchPreds.length === 0) return
+    const sorted = [...lastMatchPreds].sort((a, b) => (b.points || 0) - (a.points || 0))
+    const winner = sorted.find((p) => p.points !== null && p.points > 0)
+    if (winner?.userId === user?.uid) {
+      confettiFired.current = true
+      fireConfetti()
+    }
+  }, [lastMatchPreds.length, liveMatch])
 
   useEffect(() => { refreshAll() }, [])
 
