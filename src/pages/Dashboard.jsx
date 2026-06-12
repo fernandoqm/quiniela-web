@@ -244,21 +244,27 @@ function MatchRow({ match }) {
 function Onboarding() {
   const navigate = useNavigate()
   return (
-    <div className="flex flex-col items-center justify-center pt-16 px-6 gap-6 text-center">
-      <TrophyIcon size={96} className="drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]" />
-      <div>
-        <h2 className="text-xl font-black text-white mb-1">¡Bienvenido a la Quiniela!</h2>
-        <p className="text-muted text-sm">Crea una sala o únete a una con el código que te compartieron para empezar a predecir.</p>
+    <div className="flex flex-col gap-4">
+      {/* Banner con imagen */}
+      <div className="relative rounded-2xl overflow-hidden h-48">
+        <img src="/mundial.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-left" />
+        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
+        <div className="absolute bottom-4 left-4">
+          <h2 className="text-xl font-black text-white">¡Bienvenido!</h2>
+          <p className="text-gold text-sm font-semibold">Quiniela Mundial 2026</p>
+        </div>
       </div>
-      <div className="w-full flex flex-col gap-3">
+
+      <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 text-center">
+        <p className="text-subtle text-sm">Crea una sala o únete con el código que te compartieron para empezar a predecir.</p>
         <button
           onClick={() => navigate('/salas')}
           className="w-full bg-gold text-bg font-bold py-3.5 rounded-xl text-sm active:scale-95 transition-all"
         >
           Crear o unirme a una sala
         </button>
+        <p className="text-xs text-muted">Si ya tienes un código de invitación, ingrésalo en la pantalla de salas.</p>
       </div>
-      <p className="text-xs text-muted">Si ya tienes un código de invitación, ingrésalo en la pantalla de salas.</p>
     </div>
   )
 }
