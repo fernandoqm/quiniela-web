@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
-import { subscribeToUserStats } from '../lib/firestore'
+import { subscribeToUserStats, resetTTL } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import Spinner from '../components/ui/Spinner'
 
@@ -292,10 +292,7 @@ export default function Dashboard({ user, rooms }) {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Forzar refresh ignorando TTL borrando el timestamp
-    const { db } = await import('../lib/firebase')
-    const { doc, setDoc } = await import('firebase/firestore')
-    await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: new Date(0) }, { merge: true })
+    await resetTTL()
     await refreshAll()
     setRefreshing(false)
   }

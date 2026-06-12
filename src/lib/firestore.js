@@ -141,6 +141,10 @@ export async function markRefreshed() {
   await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: serverTimestamp() }, { merge: true })
 }
 
+export async function resetTTL() {
+  await setDoc(doc(db, 'meta', 'state'), { lastRefreshed: new Date(0) }, { merge: true })
+}
+
 // ── Matches ────────────────────────────────────────────────────────────
 export async function saveMatch(match) {
   const id = String(match.apiId)
