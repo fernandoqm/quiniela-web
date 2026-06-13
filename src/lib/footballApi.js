@@ -5,15 +5,14 @@ const PROXY = 'https://corsproxy.io/?url='
 
 function buildUrl(path, bustCache = false) {
   const sep = path.includes('?') ? '&' : '?'
-  // En producción, el API key va en la URL para evitar que el proxy bloquee el header
-  const keyParam = `${sep}api_token=${API_KEY}${bustCache ? `&_t=${Date.now()}` : ''}`
-  const url = `${API_BASE}${path}${keyParam}`
+  const cacheBust = bustCache ? `${sep}_t=${Date.now()}` : ''
+  const url = `${API_BASE}${path}${cacheBust}`
   return import.meta.env.DEV ? url : `${PROXY}${encodeURIComponent(url)}`
 }
 
 async function apiFetch(path, bustCache = false) {
   const url = buildUrl(path, bustCache)
-  const res = await fetch(url)
+  const res = await fetch(url, { headers: { 'X-Auth-Token': API_KEY } })
   if (!res.ok) throw new Error(`API error ${res.status} en ${path}`)
   return res.json()
 }
