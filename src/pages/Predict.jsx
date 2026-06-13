@@ -264,30 +264,33 @@ export default function Predict({ user }) {
     </div>
   )
 
-  const predictable = matches.filter((m) => !isLocked(m))
+  // Solo partidos TIMED de hoy en adelante que aún no están bloqueados
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const predictable = matches.filter((m) =>
+    m.status === 'TIMED' &&
+    !isLocked(m) &&
+    toDate(m.kickoff).getTime() >= todayStart.getTime()
+  )
   const grouped = groupByDay(predictable)
 
-  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
-  const recentLocked = matches
-    .filter((m) => isLocked(m) && toDate(m.kickoff).getTime() > oneDayAgo)
-    .sort((a, b) => toDate(b.kickoff).getTime() - toDate(a.kickoff).getTime())
+  // Partido en vivo o en medio tiempo — único caso donde mostramos un partido bloqueado
+  const liveMatch = matches.find((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
 
   return (
     <div className="flex flex-col gap-4 pb-4">
 
-      {/* Partidos recientes bloqueados — en curso o terminados hoy/ayer */}
-      {recentLocked.length > 0 && (
+      {/* Partido en vivo — solo si hay uno activo */}
+      {liveMatch && (
         <div className="flex flex-col gap-3">
-          <p className="text-xs text-muted uppercase tracking-widest">En curso / Terminados</p>
-          {recentLocked.map((m) => (
-            <MatchPredictionCard
-              key={m.id}
-              match={m}
-              roomId={currentRoomId}
-              userId={user?.uid}
-              members={members}
-            />
-          ))}
+          <p className="text-xs text-muted uppercase tracking-widest">En curso</p>
+          <MatchPredictionCard
+            key={liveMatch.id}
+            match={liveMatch}
+            roomId={currentRoomId}
+            userId={user?.uid}
+            members={members}
+          />
         </div>
       )}
 
@@ -306,7 +309,7 @@ export default function Predict({ user }) {
         </div>
       ))}
 
-      {predictable.length === 0 && recentLocked.length === 0 && (
+      {predictable.length === 0 && !liveMatch && (
         <div className="text-center py-16">
           <p className="text-3xl mb-2">🎯</p>
           <p className="text-subtle text-sm">No hay partidos disponibles para predecir</p>

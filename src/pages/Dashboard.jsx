@@ -262,8 +262,16 @@ export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState(false)
   const [visibleDays, setVisibleDays] = useState(2)
+  const [now, setNow] = useState(Date.now())
   const confettiFired = useRef(false)
+
+  // Reloj interno — actualiza cada minuto para recomputar ventanas de partido
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
 
   const lastFinished = finishedMatches[finishedMatches.length - 1] || null
   const { predictions: lastMatchPreds, calculateAndSave: calcLastMatch } = usePredictions(currentRoomId, lastFinished?.id, { isFinished: true })
@@ -288,17 +296,15 @@ export default function Dashboard({ user, rooms }) {
     }
   }, [lastMatchPreds.length, liveMatch])
 
-  // Partido a vigilar: en vivo > debería estar en vivo > próximo en <3 min
+  // Partido a vigilar: en vivo > kickoff pasado > próximo en <3 min
   const matchToWatch = liveMatch || matches.find((m) => {
     const kickoff = toDate(m.kickoff).getTime()
-    const now = Date.now()
     return m.status === 'TIMED' && now >= kickoff - 3 * 60 * 1000
   }) || null
 
   // ¿Estamos en ventana de partido? (desde 3 min antes hasta 150 min después del kickoff)
   const inMatchWindow = matches.some((m) => {
     const kickoff = toDate(m.kickoff).getTime()
-    const now = Date.now()
     return now >= kickoff - 3 * 60 * 1000 && now <= kickoff + 150 * 60 * 1000
   })
 
@@ -318,9 +324,16 @@ export default function Dashboard({ user, rooms }) {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await resetTTL()
-    await refreshAll()
-    if (matchToWatch?.apiId) await forceRefreshMatch(matchToWatch.apiId)
+    setRefreshError(false)
+    try {
+      await resetTTL()
+      await refreshAll()
+      if (matchToWatch?.apiId) await forceRefreshMatch(matchToWatch.apiId)
+    } catch (e) {
+      console.error('Error al actualizar:', e)
+      setRefreshError(true)
+      setTimeout(() => setRefreshError(false), 3000)
+    }
     setRefreshing(false)
   }
 
@@ -329,7 +342,7 @@ export default function Dashboard({ user, rooms }) {
   if (!currentRoomId && rooms?.length === 0) return <Onboarding />
 
   const grouped = groupByDay(matches)
-  const today = new Date()
+  const today = new Date(now)
   today.setHours(0, 0, 0, 0)
   const allDays = Object.keys(grouped).filter((day) => {
     const d = toDate(grouped[day][0].kickoff)
@@ -342,18 +355,20 @@ export default function Dashboard({ user, rooms }) {
   return (
     <div className="flex flex-col gap-4 pb-4">
 
-      {/* Botón actualizar (siempre visible, discreto) */}
+      {/* Botón actualizar */}
       <div className="flex justify-end">
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1.5 text-xs text-muted hover:text-subtle transition-colors disabled:opacity-40"
+          className={`flex items-center gap-1.5 text-xs transition-colors disabled:opacity-40 p-3 -m-3 ${
+            refreshError ? 'text-danger' : 'text-muted active:text-subtle'
+          }`}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
             <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
             <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
           </svg>
-          {refreshing ? 'Actualizando...' : 'Actualizar'}
+          {refreshing ? 'Actualizando...' : refreshError ? 'Error, intenta de nuevo' : 'Actualizar'}
         </button>
       </div>
 

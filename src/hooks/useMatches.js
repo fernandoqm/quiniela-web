@@ -18,14 +18,10 @@ export function useMatches() {
   }, [])
 
   const refreshAll = useCallback(async () => {
-    try {
-      if (!(await shouldRefresh())) return
-      const apiMatches = await fetchAllMatches()
-      await saveMatches(apiMatches)
-      await markRefreshed()
-    } catch (e) {
-      console.error('Error cargando partidos:', e)
-    }
+    if (!(await shouldRefresh())) return
+    const apiMatches = await fetchAllMatches()
+    await saveMatches(apiMatches)
+    await markRefreshed()
   }, [])
 
   const refreshLiveMatch = useCallback(async (match) => {
@@ -56,13 +52,9 @@ export function useMatches() {
   // Fuerza actualización ignorando TTL y cache (para cuando el partido acaba de comenzar)
   const forceRefreshMatch = useCallback(async (apiId) => {
     if (!apiId) return
-    try {
-      const updated = await fetchMatchById(apiId, true)
-      await saveMatch(updated)
-      await markLiveRefreshed()
-    } catch (e) {
-      console.error('Error forzando actualización de partido:', e)
-    }
+    const updated = await fetchMatchById(apiId, true)
+    await saveMatch(updated)
+    await markLiveRefreshed()
   }, [])
 
   const liveMatch = matches.find((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')

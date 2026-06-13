@@ -148,7 +148,11 @@ export default function Results({ user }) {
   )
 
   const leader = members[0]
-  const reversedFinished = [...finishedMatches].reverse()
+  // Filtrar solo partidos del torneo (desde el 11 de junio 2026)
+  const TORNEO_START = new Date('2026-06-11').getTime()
+  const reversedFinished = [...finishedMatches]
+    .filter((m) => toDate(m.kickoff).getTime() >= TORNEO_START)
+    .reverse()
   const visibleMatches = reversedFinished.slice(0, visibleCount)
   const hasMore = visibleCount < reversedFinished.length
 
