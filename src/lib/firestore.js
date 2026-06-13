@@ -215,10 +215,11 @@ export async function savePrediction(roomId, userId, matchId, homeScore, awaySco
 export function subscribeToUserStats(roomId, userId, callback) {
   const q = query(
     collection(db, 'predictions'),
-    where('userId', '==', userId)
+    where('userId', '==', userId),
+    where('roomId', '==', roomId)
   )
   return onSnapshot(q, (snap) => {
-    const preds = snap.docs.map((d) => d.data()).filter((p) => p.roomId === roomId)
+    const preds = snap.docs.map((d) => d.data())
     callback({
       total: preds.length,
       points: preds.reduce((s, p) => s + (p.points || 0), 0),
@@ -239,6 +240,16 @@ export function subscribeToMyPrediction(roomId, matchId, userId, callback) {
     const doc = snap.docs[0]
     callback(doc ? { id: doc.id, ...doc.data() } : null)
   })
+}
+
+export async function getPredictions(roomId, matchId) {
+  const q = query(
+    collection(db, 'predictions'),
+    where('roomId', '==', roomId),
+    where('matchId', '==', String(matchId))
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
 export function subscribeToPredictions(roomId, matchId, callback) {

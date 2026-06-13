@@ -262,10 +262,11 @@ export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
+  const [visibleDays, setVisibleDays] = useState(2)
   const confettiFired = useRef(false)
 
   const lastFinished = finishedMatches[finishedMatches.length - 1] || null
-  const { predictions: lastMatchPreds, calculateAndSave: calcLastMatch } = usePredictions(currentRoomId, lastFinished?.id)
+  const { predictions: lastMatchPreds, calculateAndSave: calcLastMatch } = usePredictions(currentRoomId, lastFinished?.id, { isFinished: true })
 
   // Auto-scoring: calcular puntos de todos cuando carga el último partido terminado
   useEffect(() => {
@@ -275,12 +276,13 @@ export default function Dashboard({ user, rooms }) {
     if (hasUnscored) calcLastMatch(lastFinished)
   }, [lastMatchPreds.length, lastFinished?.id])
 
-  // Confeti si ganó el último partido
+  // Confeti si ganó el último partido (incluye empates)
   useEffect(() => {
     if (confettiFired.current || liveMatch || !lastFinished || lastMatchPreds.length === 0) return
     const sorted = [...lastMatchPreds].sort((a, b) => (b.points || 0) - (a.points || 0))
-    const winner = sorted.find((p) => p.points !== null && p.points > 0)
-    if (winner?.userId === user?.uid) {
+    const topPoints = sorted[0]?.points ?? 0
+    const winners = topPoints > 0 ? sorted.filter((p) => p.points === topPoints) : []
+    if (winners.some((w) => w.userId === user?.uid)) {
       confettiFired.current = true
       fireConfetti()
     }
@@ -312,6 +314,9 @@ export default function Dashboard({ user, rooms }) {
   if (!currentRoomId && rooms?.length === 0) return <Onboarding />
 
   const grouped = groupByDay(matches)
+  const allDays = Object.keys(grouped)
+  const visibleDayKeys = allDays.slice(0, visibleDays)
+  const hasMoreDays = visibleDays < allDays.length
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -340,15 +345,24 @@ export default function Dashboard({ user, rooms }) {
       {/* Mis stats */}
       {currentRoomId && <MyStats roomId={currentRoomId} userId={user?.uid} />}
 
-      {/* Todos los partidos */}
-      {Object.entries(grouped).map(([day, dayMatches]) => (
+      {/* Partidos por día (paginado de 2 en 2 días) */}
+      {visibleDayKeys.map((day) => (
         <div key={day}>
           <p className="text-xs text-muted uppercase tracking-widest mb-1 capitalize">{day}</p>
           <div className="bg-card border border-border rounded-xl px-3">
-            {dayMatches.map((m) => <MatchRow key={m.id} match={m} />)}
+            {grouped[day].map((m) => <MatchRow key={m.id} match={m} />)}
           </div>
         </div>
       ))}
+
+      {hasMoreDays && (
+        <button
+          onClick={() => setVisibleDays((d) => d + 2)}
+          className="w-full py-2.5 text-sm text-muted border border-border rounded-xl hover:bg-card transition-colors"
+        >
+          Ver más partidos
+        </button>
+      )}
 
       {matches.length === 0 && (
         <div className="text-center py-16">

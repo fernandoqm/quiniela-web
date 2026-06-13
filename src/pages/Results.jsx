@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import confetti from 'canvas-confetti'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
@@ -8,6 +8,8 @@ import useAppStore from '../store/useAppStore'
 import LeaderboardRow from '../components/leaderboard/LeaderboardRow'
 import { getPointsLabel, getPointsColor } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
+
+const PAGE_SIZE = 10
 
 function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
@@ -43,7 +45,7 @@ function fireConfetti() {
 }
 
 function MatchResults({ match, roomId, user, members, onUserWon }) {
-  const { predictions, calculateAndSave } = usePredictions(roomId, match.id)
+  const { predictions, calculateAndSave } = usePredictions(roomId, match.id, { isFinished: true })
   const notifiedWin = useRef(false)
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function Results({ user }) {
   const { finishedMatches, liveMatch, loading } = useMatches()
   const { members } = useLeaderboard(currentRoomId)
   const confettiFired = useRef(false)
-
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const handleUserWonLastMatch = () => {
     if (confettiFired.current) return
@@ -146,6 +148,9 @@ export default function Results({ user }) {
   )
 
   const leader = members[0]
+  const reversedFinished = [...finishedMatches].reverse()
+  const visibleMatches = reversedFinished.slice(0, visibleCount)
+  const hasMore = visibleCount < reversedFinished.length
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -153,7 +158,6 @@ export default function Results({ user }) {
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Tabla general</p>
           <div className="relative overflow-hidden bg-card border border-border rounded-2xl px-4 py-1">
-            {/* Trofeo marca de agua */}
             <TrophyIcon size={120} className="absolute -right-6 -bottom-4 opacity-[0.07] pointer-events-none" />
             {members.map((m, i) => (
               <LeaderboardRow key={m.uid} member={m} position={i} isCurrentUser={m.uid === user?.uid} />
@@ -171,10 +175,10 @@ export default function Results({ user }) {
         </div>
       )}
 
-      {finishedMatches.length > 0 && (
+      {reversedFinished.length > 0 && (
         <div>
           <p className="text-xs text-muted uppercase tracking-widest mb-2">Partidos finalizados</p>
-          {[...finishedMatches].reverse().map((match, i) => (
+          {visibleMatches.map((match, i) => (
             <div key={match.id} className="mb-3">
               <MatchResults
                 match={match}
@@ -185,10 +189,18 @@ export default function Results({ user }) {
               />
             </div>
           ))}
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="w-full py-2.5 text-sm text-muted border border-border rounded-xl hover:bg-card transition-colors"
+            >
+              Ver {Math.min(PAGE_SIZE, reversedFinished.length - visibleCount)} partidos más
+            </button>
+          )}
         </div>
       )}
 
-      {finishedMatches.length === 0 && (
+      {reversedFinished.length === 0 && (
         <div className="text-center py-12">
           <p className="text-3xl mb-2">⏳</p>
           <p className="text-subtle text-sm">Aún no han terminado partidos</p>
