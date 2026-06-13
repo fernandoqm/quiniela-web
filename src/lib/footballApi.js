@@ -3,15 +3,18 @@ const COMPETITION_ID = '2000' // FIFA World Cup
 const API_KEY = import.meta.env.VITE_FOOTBALL_API_KEY
 const PROXY = 'https://corsproxy.io/?url='
 
-function buildUrl(path) {
-  const url = `${API_BASE}${path}`
+function buildUrl(path, bustCache = false) {
+  const sep = path.includes('?') ? '&' : '?'
+  // En producción, el API key va en la URL para evitar que el proxy bloquee el header
+  const keyParam = `${sep}api_token=${API_KEY}${bustCache ? `&_t=${Date.now()}` : ''}`
+  const url = `${API_BASE}${path}${keyParam}`
   return import.meta.env.DEV ? url : `${PROXY}${encodeURIComponent(url)}`
 }
 
-async function apiFetch(path) {
-  const url = buildUrl(path)
-  const res = await fetch(url, { headers: { 'X-Auth-Token': API_KEY } })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
+async function apiFetch(path, bustCache = false) {
+  const url = buildUrl(path, bustCache)
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`API error ${res.status} en ${path}`)
   return res.json()
 }
 
@@ -21,12 +24,12 @@ export async function fetchAllMatches() {
 }
 
 export async function fetchLiveMatches() {
-  const data = await apiFetch(`/competitions/${COMPETITION_ID}/matches?status=IN_PLAY,PAUSED`)
+  const data = await apiFetch(`/competitions/${COMPETITION_ID}/matches?status=IN_PLAY,PAUSED`, true)
   return data.matches.map(mapApiMatch)
 }
 
-export async function fetchMatchById(apiId) {
-  const data = await apiFetch(`/matches/${apiId}`)
+export async function fetchMatchById(apiId, bustCache = false) {
+  const data = await apiFetch(`/matches/${apiId}`, bustCache)
   return mapApiMatch(data)
 }
 

@@ -53,10 +53,22 @@ export function useMatches() {
     }
   }, [])
 
+  // Fuerza actualización ignorando TTL y cache (para cuando el partido acaba de comenzar)
+  const forceRefreshMatch = useCallback(async (apiId) => {
+    if (!apiId) return
+    try {
+      const updated = await fetchMatchById(apiId, true)
+      await saveMatch(updated)
+      await markLiveRefreshed()
+    } catch (e) {
+      console.error('Error forzando actualización de partido:', e)
+    }
+  }, [])
+
   const liveMatch = matches.find((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
   const upcomingMatches = matches.filter((m) => m.status === 'TIMED')
   const finishedMatches = matches.filter((m) => m.status === 'FINISHED')
   const nextMatch = upcomingMatches[0] || null
 
-  return { matches, loading, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared }
+  return { matches, loading, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared, forceRefreshMatch }
 }

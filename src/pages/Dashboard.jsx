@@ -260,7 +260,7 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared } = useMatches()
+  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
   const [visibleDays, setVisibleDays] = useState(2)
   const confettiFired = useRef(false)
@@ -288,24 +288,39 @@ export default function Dashboard({ user, rooms }) {
     }
   }, [lastMatchPreds.length, liveMatch])
 
+  // Partido a vigilar: en vivo > debería estar en vivo > próximo en <3 min
+  const matchToWatch = liveMatch || matches.find((m) => {
+    const kickoff = toDate(m.kickoff).getTime()
+    const now = Date.now()
+    return m.status === 'TIMED' && now >= kickoff - 3 * 60 * 1000
+  }) || null
+
+  // ¿Estamos en ventana de partido? (desde 3 min antes hasta 150 min después del kickoff)
+  const inMatchWindow = matches.some((m) => {
+    const kickoff = toDate(m.kickoff).getTime()
+    const now = Date.now()
+    return now >= kickoff - 3 * 60 * 1000 && now <= kickoff + 150 * 60 * 1000
+  })
+
+  // Carga inicial al abrir la app
   useEffect(() => {
     refreshAll()
-    const id = setInterval(() => refreshAll(), 3 * 60 * 1000)
-    return () => clearInterval(id)
   }, [])
 
-  // Cuando hay partido en vivo, refrescar cada 90s usando TTL compartido
+  // Refresh automático solo durante ventana de partido (90s con cache-bust)
+  // Fuera de ventana: sin polling, los datos no cambian
   useEffect(() => {
-    if (!liveMatch) return
-    const id = setInterval(() => refreshLiveShared(liveMatch.apiId), 90 * 1000)
-    refreshLiveShared(liveMatch.apiId)
+    if (!inMatchWindow || !matchToWatch?.apiId) return
+    forceRefreshMatch(matchToWatch.apiId)
+    const id = setInterval(() => refreshLiveShared(matchToWatch.apiId), 90 * 1000)
     return () => clearInterval(id)
-  }, [liveMatch?.id])
+  }, [inMatchWindow, matchToWatch?.id])
 
   const handleRefresh = async () => {
     setRefreshing(true)
     await resetTTL()
     await refreshAll()
+    if (matchToWatch?.apiId) await forceRefreshMatch(matchToWatch.apiId)
     setRefreshing(false)
   }
 
