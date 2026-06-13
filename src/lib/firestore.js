@@ -1,7 +1,7 @@
 import {
   doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc,
   collection, query, where, orderBy, getDocs,
-  onSnapshot, serverTimestamp, increment, writeBatch, arrayUnion
+  onSnapshot, serverTimestamp, increment, writeBatch, arrayUnion, runTransaction
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -273,9 +273,12 @@ export async function getPredictionsByRoom(roomId) {
 }
 
 export async function updatePredictionPoints(roomId, userId, matchId, points) {
-  const id = predId(roomId, userId, matchId)
-  await updateDoc(doc(db, 'predictions', id), { points })
-  await updateDoc(doc(db, 'rooms', roomId, 'members', userId), {
-    totalPoints: increment(points),
+  const predRef = doc(db, 'predictions', predId(roomId, userId, matchId))
+  const memberRef = doc(db, 'rooms', roomId, 'members', userId)
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(predRef)
+    if (snap.exists() && snap.data().points !== null) return
+    tx.update(predRef, { points })
+    tx.update(memberRef, { totalPoints: increment(points) })
   })
 }
