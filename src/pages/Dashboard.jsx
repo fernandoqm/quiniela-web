@@ -314,7 +314,13 @@ export default function Dashboard({ user, rooms }) {
   if (!currentRoomId && rooms?.length === 0) return <Onboarding />
 
   const grouped = groupByDay(matches)
-  const allDays = Object.keys(grouped)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const allDays = Object.keys(grouped).filter((day) => {
+    const d = toDate(grouped[day][0].kickoff)
+    d.setHours(0, 0, 0, 0)
+    return d >= today
+  })
   const visibleDayKeys = allDays.slice(0, visibleDays)
   const hasMoreDays = visibleDays < allDays.length
 

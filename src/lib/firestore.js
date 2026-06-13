@@ -46,9 +46,7 @@ export async function createRoom(name, userId, alias) {
     joinedAt: serverTimestamp(),
     totalPoints: 0,
   })
-  await updateDoc(doc(db, 'users', userId), {
-    rooms: [...(await getUserRooms(userId)), roomRef.id],
-  })
+  await setDoc(doc(db, 'users', userId), { rooms: arrayUnion(roomRef.id) }, { merge: true })
   return { id: roomRef.id, code }
 }
 
@@ -60,7 +58,13 @@ export async function joinRoom(code, userId, alias) {
   const roomId = roomDoc.id
   const memberRef = doc(db, 'rooms', roomId, 'members', userId)
   const memberSnap = await getDoc(memberRef)
-  if (memberSnap.exists()) throw new Error('Ya eres miembro de esta sala')
+
+  if (memberSnap.exists()) {
+    // Ya es miembro — solo sincronizar el roomId en su lista por si quedó desincronizado
+    await setDoc(doc(db, 'users', userId), { rooms: arrayUnion(roomId) }, { merge: true })
+    return roomId
+  }
+
   await setDoc(memberRef, {
     uid: userId,
     alias,
@@ -68,8 +72,7 @@ export async function joinRoom(code, userId, alias) {
     totalPoints: 0,
   })
   await updateDoc(doc(db, 'rooms', roomId), { memberCount: increment(1) })
-  const currentRooms = await getUserRooms(userId)
-  await updateDoc(doc(db, 'users', userId), { rooms: [...currentRooms, roomId] })
+  await setDoc(doc(db, 'users', userId), { rooms: arrayUnion(roomId) }, { merge: true })
   return roomId
 }
 
