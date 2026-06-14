@@ -31,7 +31,7 @@ export function usePredictions(roomId, matchId, { isFinished = false } = {}) {
   }
 
   const calculateAndSave = async (match, onlyUserId = null) => {
-    if (!match || match.homeScore === null) return
+    if (!match || match.status !== 'FINISHED' || match.homeScore === null) return
     const toScore = onlyUserId
       ? predictions.filter((p) => p.userId === onlyUserId)
       : predictions
