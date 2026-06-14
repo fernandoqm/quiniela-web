@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMatches } from '../hooks/useMatches'
 import { useLeaderboard } from '../hooks/useLeaderboard'
-import { getPredictions, adminFixPoints } from '../lib/firestore'
+import { getPredictions, adminFixPoints, adminSetMemberTotal } from '../lib/firestore'
 import { calculatePoints } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
 
@@ -89,6 +89,8 @@ export default function Admin({ user, rooms }) {
   const [loadingPreds, setLoadingPreds] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [memberEdits, setMemberEdits] = useState({})
+  const [savingMember, setSavingMember] = useState(null)
 
   const { finishedMatches, loading } = useMatches()
   const { members } = useLeaderboard(roomId)
@@ -118,7 +120,7 @@ export default function Admin({ user, rooms }) {
     for (const pred of predictions) {
       const correct = calculatePoints(pred, selectedMatch)
       if (correct !== null && correct !== pred.points) {
-        await adminFixPoints(roomId, pred.userId, selectedMatch.id, correct, pred.points)
+        await adminFixPoints(roomId, pred.userId, selectedMatch.id, correct)
         changed++
       }
     }
@@ -134,7 +136,7 @@ export default function Admin({ user, rooms }) {
     const newPts = editedPoints[pred.userId]
     if (newPts === undefined || newPts === pred.points) return
     setSaving(true)
-    await adminFixPoints(roomId, pred.userId, selectedMatch.id, newPts, pred.points)
+    await adminFixPoints(roomId, pred.userId, selectedMatch.id, newPts)
     const updated = await getPredictions(roomId, selectedMatch.id)
     setPredictions(updated)
     setEditedPoints((prev) => { const n = { ...prev }; delete n[pred.userId]; return n })
@@ -164,6 +166,49 @@ export default function Admin({ user, rooms }) {
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Tabla de puntos editable */}
+      {members.length > 0 && (
+        <div>
+          <p className="text-xs text-muted uppercase tracking-widest mb-2">Puntos por jugador</p>
+          <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+            {[...members].sort((a, b) => b.totalPoints - a.totalPoints).map((m) => {
+              const editing = memberEdits[m.uid] !== undefined
+              const val = editing ? memberEdits[m.uid] : m.totalPoints
+
+              const handleSaveMember = async () => {
+                setSavingMember(m.uid)
+                await adminSetMemberTotal(roomId, m.uid, Number(memberEdits[m.uid]))
+                setMemberEdits((prev) => { const n = { ...prev }; delete n[m.uid]; return n })
+                setSavingMember(null)
+              }
+
+              return (
+                <div key={m.uid} className="flex items-center gap-3 px-4 py-3">
+                  <span className="text-sm font-semibold flex-1">{m.alias}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={val}
+                    onChange={(e) => setMemberEdits((prev) => ({ ...prev, [m.uid]: e.target.value }))}
+                    className="w-16 bg-surface border border-border rounded-lg px-2 py-1.5 text-sm text-white text-center outline-none focus:border-gold"
+                  />
+                  <span className="text-xs text-muted">pts</span>
+                  {editing && (
+                    <button
+                      onClick={handleSaveMember}
+                      disabled={savingMember === m.uid}
+                      className="text-xs bg-gold text-bg font-bold px-3 py-1.5 rounded-lg disabled:opacity-40"
+                    >
+                      {savingMember === m.uid ? '...' : 'Guardar'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
