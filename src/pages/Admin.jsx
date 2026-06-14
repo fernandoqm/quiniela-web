@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Navigate } from 'react-router-dom'
 import { useMatches } from '../hooks/useMatches'
 import { useLeaderboard } from '../hooks/useLeaderboard'
 import { getPredictions, adminFixPoints } from '../lib/firestore'
 import { calculatePoints } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
 
-const ADMIN_EMAIL = 'fernando.quesadam@gmail.com'
+const ADMIN_KEY = '0pt1m7sPr1m3'
 
 function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
@@ -35,8 +34,53 @@ function pointsColor(pts) {
   return 'text-gray-500'
 }
 
+function AdminLogin({ onSuccess }) {
+  const [input, setInput] = useState('')
+  const [error, setError] = useState(false)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (input === ADMIN_KEY) {
+      sessionStorage.setItem('admin_auth', '1')
+      onSuccess()
+    } else {
+      setError(true)
+      setInput('')
+      setTimeout(() => setError(false), 2000)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center pt-24 gap-4 px-6">
+      <p className="text-2xl">🔒</p>
+      <p className="text-sm font-semibold">Panel de administración</p>
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 max-w-xs">
+        <input
+          type="password"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Clave de acceso"
+          autoFocus
+          className={`w-full bg-card border rounded-xl px-4 py-3 text-sm text-white placeholder-muted outline-none transition-colors ${
+            error ? 'border-danger' : 'border-border focus:border-gold'
+          }`}
+        />
+        {error && <p className="text-danger text-xs text-center">Clave incorrecta</p>}
+        <button
+          type="submit"
+          className="w-full bg-gold text-bg font-bold py-3 rounded-xl text-sm"
+        >
+          Entrar
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function Admin({ user, rooms }) {
-  if (user?.email !== ADMIN_EMAIL) return <Navigate to="/" />
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('admin_auth') === '1')
+
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />
 
   const [roomId, setRoomId] = useState(rooms?.[0]?.id || '')
   const [selectedMatch, setSelectedMatch] = useState(null)
