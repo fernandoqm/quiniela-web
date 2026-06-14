@@ -272,6 +272,16 @@ export async function getPredictionsByRoom(roomId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+export async function adminFixPoints(roomId, userId, matchId, newPoints, oldPoints) {
+  const predRef = doc(db, 'predictions', predId(roomId, userId, matchId))
+  const memberRef = doc(db, 'rooms', roomId, 'members', userId)
+  const delta = newPoints - (oldPoints ?? 0)
+  await runTransaction(db, async (tx) => {
+    tx.update(predRef, { points: newPoints })
+    if (delta !== 0) tx.update(memberRef, { totalPoints: increment(delta) })
+  })
+}
+
 export async function updatePredictionPoints(roomId, userId, matchId, points) {
   const predRef = doc(db, 'predictions', predId(roomId, userId, matchId))
   const memberRef = doc(db, 'rooms', roomId, 'members', userId)
