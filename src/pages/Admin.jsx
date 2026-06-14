@@ -66,10 +66,7 @@ function AdminLogin({ onSuccess }) {
           }`}
         />
         {error && <p className="text-danger text-xs text-center">Clave incorrecta</p>}
-        <button
-          type="submit"
-          className="w-full bg-gold text-bg font-bold py-3 rounded-xl text-sm"
-        >
+        <button type="submit" className="w-full bg-gold text-bg font-bold py-3 rounded-xl text-sm">
           Entrar
         </button>
       </form>
@@ -77,12 +74,8 @@ function AdminLogin({ onSuccess }) {
   )
 }
 
-export default function Admin({ user, rooms }) {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem('admin_auth') === '1')
-
-  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />
-
-  const [roomId, setRoomId] = useState(rooms?.[0]?.id || '')
+function AdminPanel({ rooms }) {
+  const [roomId, setRoomId] = useState('')
   const [selectedMatch, setSelectedMatch] = useState(null)
   const [predictions, setPredictions] = useState([])
   const [editedPoints, setEditedPoints] = useState({})
@@ -95,10 +88,14 @@ export default function Admin({ user, rooms }) {
   const { finishedMatches, loading } = useMatches()
   const { members } = useLeaderboard(roomId)
 
+  useEffect(() => {
+    if (rooms?.length > 0 && !roomId) setRoomId(rooms[0].id)
+  }, [rooms])
+
   const TORNEO_START = new Date('2026-06-11').getTime()
-  const tournamentMatches = finishedMatches.filter(
-    (m) => toDate(m.kickoff).getTime() >= TORNEO_START
-  ).reverse()
+  const tournamentMatches = finishedMatches
+    .filter((m) => toDate(m.kickoff).getTime() >= TORNEO_START)
+    .reverse()
 
   useEffect(() => {
     if (!roomId || !selectedMatch) return
@@ -154,25 +151,25 @@ export default function Admin({ user, rooms }) {
       </div>
 
       {/* Selector de sala */}
-      {rooms?.length > 1 && (
-        <div>
-          <p className="text-xs text-muted uppercase tracking-widest mb-1">Sala</p>
-          <select
-            value={roomId}
-            onChange={(e) => { setRoomId(e.target.value); setSelectedMatch(null) }}
-            className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-sm text-white"
-          >
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest mb-1">Sala</p>
+        <select
+          value={roomId}
+          onChange={(e) => { setRoomId(e.target.value); setSelectedMatch(null) }}
+          className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-sm text-white"
+        >
+          {rooms?.map((r) => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* Tabla de puntos editable */}
-      {members.length > 0 && (
-        <div>
-          <p className="text-xs text-muted uppercase tracking-widest mb-2">Puntos por jugador</p>
+      {/* Puntos por jugador — edición directa */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest mb-2">Puntos por jugador</p>
+        {members.length === 0 ? (
+          <p className="text-subtle text-sm text-center py-4">Cargando jugadores...</p>
+        ) : (
           <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
             {[...members].sort((a, b) => b.totalPoints - a.totalPoints).map((m) => {
               const editing = memberEdits[m.uid] !== undefined
@@ -209,12 +206,12 @@ export default function Admin({ user, rooms }) {
               )
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Lista de partidos finalizados */}
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest mb-2">Partidos finalizados</p>
+        <p className="text-xs text-muted uppercase tracking-widest mb-2">Recalcular por partido</p>
         <div className="flex flex-col gap-2">
           {tournamentMatches.map((m) => (
             <button
@@ -223,7 +220,7 @@ export default function Admin({ user, rooms }) {
               className={`w-full text-left px-4 py-3 rounded-xl border transition-colors ${
                 selectedMatch?.id === m.id
                   ? 'bg-gold/10 border-gold/40'
-                  : 'bg-card border-border hover:border-border/80'
+                  : 'bg-card border-border'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -231,15 +228,10 @@ export default function Admin({ user, rooms }) {
                   <p className="text-sm font-semibold">{formatMatch(m)}</p>
                   <p className="text-xs text-muted mt-0.5">{formatDate(m.kickoff)}</p>
                 </div>
-                <span className="text-sm font-black text-white">
-                  {m.homeScore} – {m.awayScore}
-                </span>
+                <span className="text-sm font-black text-white">{m.homeScore} – {m.awayScore}</span>
               </div>
             </button>
           ))}
-          {tournamentMatches.length === 0 && (
-            <p className="text-subtle text-sm text-center py-8">No hay partidos finalizados</p>
-          )}
         </div>
       </div>
 
@@ -249,9 +241,7 @@ export default function Admin({ user, rooms }) {
           <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
             <div>
               <p className="font-bold text-sm">{formatMatch(selectedMatch)}</p>
-              <p className="text-xs text-muted">
-                Resultado final: {selectedMatch.homeScore} – {selectedMatch.awayScore}
-              </p>
+              <p className="text-xs text-muted">Resultado final: {selectedMatch.homeScore} – {selectedMatch.awayScore}</p>
             </div>
             <button
               onClick={handleRecalculate}
@@ -286,9 +276,7 @@ export default function Admin({ user, rooms }) {
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div>
                         <span className="text-sm font-semibold">{getAlias(pred.userId)}</span>
-                        <span className="text-xs text-muted ml-2">
-                          predijo {pred.homeScore}–{pred.awayScore}
-                        </span>
+                        <span className="text-xs text-muted ml-2">predijo {pred.homeScore}–{pred.awayScore}</span>
                       </div>
                       {isWrong && (
                         <span className="text-xs bg-danger/20 text-danger px-2 py-0.5 rounded-full font-semibold">
@@ -297,34 +285,25 @@ export default function Admin({ user, rooms }) {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-surface rounded-lg px-3 py-1.5">
-                          <p className="text-muted mb-0.5">Guardado</p>
-                          <p className={`font-bold ${pointsColor(stored)}`}>
-                            {stored !== null ? pointsLabel(stored) : '—'}
-                          </p>
-                        </div>
-                        <div className={`rounded-lg px-3 py-1.5 ${isWrong ? 'bg-win/10' : 'bg-surface'}`}>
-                          <p className="text-muted mb-0.5">Calculado</p>
-                          <p className={`font-bold ${pointsColor(correct)}`}>
-                            {correct !== null ? pointsLabel(correct) : '—'}
-                          </p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                      <div className="bg-surface rounded-lg px-3 py-1.5">
+                        <p className="text-muted mb-0.5">Guardado</p>
+                        <p className={`font-bold ${pointsColor(stored)}`}>{stored !== null ? pointsLabel(stored) : '—'}</p>
+                      </div>
+                      <div className={`rounded-lg px-3 py-1.5 ${isWrong ? 'bg-win/10' : 'bg-surface'}`}>
+                        <p className="text-muted mb-0.5">Calculado</p>
+                        <p className={`font-bold ${pointsColor(correct)}`}>{correct !== null ? pointsLabel(correct) : '—'}</p>
                       </div>
                     </div>
 
-                    {/* Edición manual */}
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2">
                       <p className="text-xs text-muted">Manual:</p>
                       {[0, 1, 2, 3].map((pts) => (
                         <button
                           key={pts}
                           onClick={() => setEditedPoints((prev) => ({ ...prev, [pred.userId]: pts }))}
                           className={`text-xs w-8 h-8 rounded-lg font-bold transition-colors ${
-                            currentEdit === pts
-                              ? 'bg-gold text-bg'
-                              : 'bg-surface text-muted hover:text-white'
+                            currentEdit === pts ? 'bg-gold text-bg' : 'bg-surface text-muted hover:text-white'
                           }`}
                         >
                           {pts}
@@ -349,4 +328,11 @@ export default function Admin({ user, rooms }) {
       )}
     </div>
   )
+}
+
+export default function Admin({ user, rooms }) {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('admin_auth') === '1')
+
+  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />
+  return <AdminPanel rooms={rooms} />
 }
