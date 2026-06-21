@@ -10,6 +10,7 @@ import Results from './pages/Results'
 import Rooms from './pages/Rooms'
 import Admin from './pages/Admin'
 import Bracket from './pages/Bracket'
+import Champions from './pages/Champions'
 import Spinner from './components/ui/Spinner'
 
 function AppLayout({ user, logout }) {
@@ -27,6 +28,7 @@ function AppLayout({ user, logout }) {
             <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} user={user} reload={reload} />
           } />
           <Route path="/llave" element={<Bracket />} />
+          <Route path="/campeones" element={<Champions user={user} />} />
           <Route path="/admin" element={<Admin user={user} rooms={rooms} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

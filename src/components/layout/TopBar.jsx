@@ -1,17 +1,30 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
 import TrophyIcon from '../ui/TrophyIcon'
+import ChampionPickModal from '../champion/ChampionPickModal'
+
+function CrownIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 19h20l-2-9-5 5-3-8-3 8-5-5-2 9z" />
+      <line x1="2" y1="22" x2="22" y2="22" />
+    </svg>
+  )
+}
 
 export default function TopBar({ rooms, user, onLogout }) {
   const { currentRoomId, setCurrentRoom } = useAppStore()
   const [open, setOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [championOpen, setChampionOpen] = useState(false)
   const currentRoom = rooms.find((r) => r.id === currentRoomId)
   const { members } = useLeaderboard(currentRoomId)
   const me = members.find((m) => m.uid === user?.uid)
 
   return (
+    <>
     <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
       {/* Logo */}
       <div className="flex items-center gap-1.5 shrink-0">
@@ -51,6 +64,14 @@ export default function TopBar({ rooms, user, onLogout }) {
 
       {/* Alias + posición + puntos + avatar */}
       <div className="flex items-center gap-2 shrink-0">
+        {/* Botón campeón */}
+        <button
+          onClick={() => setChampionOpen(true)}
+          className="text-gold/60 hover:text-gold transition-colors p-1"
+          title="Predicción de campeón"
+        >
+          <CrownIcon />
+        </button>
         {me?.alias && (
           <span className="text-xs text-subtle font-medium hidden sm:block">{me.alias}</span>
         )}
@@ -85,6 +106,13 @@ export default function TopBar({ rooms, user, onLogout }) {
                 <p className="text-xs text-white font-medium truncate">{user?.displayName}</p>
                 <p className="text-xs text-muted truncate">{user?.email}</p>
               </div>
+              <Link
+                to="/salas"
+                onClick={() => setUserMenuOpen(false)}
+                className="w-full text-left px-4 py-3 text-sm text-gold hover:bg-gold/10 transition-colors block border-b border-border"
+              >
+                👥 Salas
+              </Link>
               <button
                 onClick={() => { setUserMenuOpen(false); onLogout() }}
                 className="w-full text-left px-4 py-3 text-sm text-danger hover:bg-danger/10 transition-colors"
@@ -96,5 +124,14 @@ export default function TopBar({ rooms, user, onLogout }) {
         </div>
       </div>
     </div>
+
+      {championOpen && (
+        <ChampionPickModal
+          user={user}
+          roomId={currentRoomId}
+          onClose={() => setChampionOpen(false)}
+        />
+      )}
+    </>
   )
 }

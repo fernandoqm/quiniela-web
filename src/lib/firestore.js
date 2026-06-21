@@ -283,6 +283,21 @@ async function recalculateMemberTotal(roomId, userId) {
   await updateDoc(doc(db, 'rooms', roomId, 'members', userId), { totalPoints: total })
 }
 
+// ── Champion Picks ─────────────────────────────────────────────────────
+export async function saveChampionPick(roomId, userId, team) {
+  await setDoc(doc(db, 'champion_picks', `${roomId}_${userId}`), {
+    userId,
+    roomId,
+    team,
+    submittedAt: serverTimestamp(),
+  })
+}
+
+export function subscribeToChampionPicks(roomId, callback) {
+  const q = query(collection(db, 'champion_picks'), where('roomId', '==', roomId))
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+}
+
 export async function adminSetMemberTotal(roomId, userId, totalPoints) {
   await updateDoc(doc(db, 'rooms', roomId, 'members', userId), { totalPoints })
 }
