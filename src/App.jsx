@@ -9,6 +9,7 @@ import Predict from './pages/Predict'
 import Results from './pages/Results'
 import Rooms from './pages/Rooms'
 import Admin from './pages/Admin'
+import Bracket from './pages/Bracket'
 import Spinner from './components/ui/Spinner'
 
 function AppLayout({ user, logout }) {
@@ -25,6 +26,7 @@ function AppLayout({ user, logout }) {
           <Route path="/salas" element={
             <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} user={user} reload={reload} />
           } />
+          <Route path="/llave" element={<Bracket />} />
           <Route path="/admin" element={<Admin user={user} rooms={rooms} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

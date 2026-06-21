@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useMatches } from '../hooks/useMatches'
 import { useLeaderboard } from '../hooks/useLeaderboard'
-import { getPredictions, adminFixPoints, adminSetMemberTotal } from '../lib/firestore'
+import { getPredictions, adminFixPoints, adminSetMemberTotal, resetTTL, saveMatches } from '../lib/firestore'
+import { fetchAllMatches } from '../lib/footballApi'
 import { calculatePoints } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
 
@@ -84,8 +85,25 @@ function AdminPanel({ rooms }) {
   const [message, setMessage] = useState('')
   const [memberEdits, setMemberEdits] = useState({})
   const [savingMember, setSavingMember] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   const { finishedMatches, loading } = useMatches()
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      const apiMatches = await fetchAllMatches()
+      await saveMatches(apiMatches)
+      await resetTTL()
+      setSyncMsg(`${apiMatches.length} partidos sincronizados`)
+    } catch (e) {
+      setSyncMsg(`Error: ${e.message}`)
+    }
+    setSyncing(false)
+    setTimeout(() => setSyncMsg(''), 5000)
+  }
   const { members } = useLeaderboard(roomId)
 
   useEffect(() => {
@@ -148,6 +166,21 @@ function AdminPanel({ rooms }) {
     <div className="flex flex-col gap-4 pb-8">
       <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-2 text-center">
         <span className="text-danger text-xs font-bold uppercase tracking-widest">Panel de administración</span>
+      </div>
+
+      {/* Sincronizar partidos desde API */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest mb-2">Sincronizar partidos</p>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="w-full bg-info/10 border border-info/30 text-info font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40"
+        >
+          {syncing ? 'Sincronizando...' : 'Traer partidos desde API'}
+        </button>
+        {syncMsg && (
+          <p className="text-xs text-center mt-2 text-subtle">{syncMsg}</p>
+        )}
       </div>
 
       {/* Selector de sala */}

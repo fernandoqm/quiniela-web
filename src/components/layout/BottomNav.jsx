@@ -53,10 +53,25 @@ function UsersIcon() {
   )
 }
 
+function BracketIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="7" height="5" rx="1"/>
+      <rect x="1" y="16" width="7" height="5" rx="1"/>
+      <rect x="16" y="9.5" width="7" height="5" rx="1"/>
+      <line x1="8" y1="5.5" x2="11" y2="5.5"/>
+      <line x1="11" y1="5.5" x2="11" y2="18.5"/>
+      <line x1="8" y1="18.5" x2="11" y2="18.5"/>
+      <line x1="11" y1="12" x2="16" y2="12"/>
+    </svg>
+  )
+}
+
 const tabs = [
   { to: '/', label: 'Inicio', Icon: HomeIcon },
   { to: '/predecir', label: 'Predecir', Icon: TargetIcon },
   { to: '/tabla', label: 'Resultados', Icon: TrophyIcon },
+  { to: '/llave', label: 'Llave', Icon: BracketIcon },
   { to: '/salas', label: 'Sala', Icon: UsersIcon },
 ]
 
