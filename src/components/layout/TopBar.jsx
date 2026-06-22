@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
 import TrophyIcon from '../ui/TrophyIcon'
-import ChampionPickModal from '../champion/ChampionPickModal'
 
 function CrownIcon() {
   return (
@@ -18,13 +17,12 @@ export default function TopBar({ rooms, user, onLogout }) {
   const { currentRoomId, setCurrentRoom } = useAppStore()
   const [open, setOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [championOpen, setChampionOpen] = useState(false)
+  const navigate = useNavigate()
   const currentRoom = rooms.find((r) => r.id === currentRoomId)
   const { members } = useLeaderboard(currentRoomId)
   const me = members.find((m) => m.uid === user?.uid)
 
   return (
-    <>
     <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
       {/* Logo */}
       <div className="flex items-center gap-1.5 shrink-0">
@@ -66,7 +64,7 @@ export default function TopBar({ rooms, user, onLogout }) {
       <div className="flex items-center gap-2 shrink-0">
         {/* Botón campeón */}
         <button
-          onClick={() => setChampionOpen(true)}
+          onClick={() => navigate('/campeones')}
           className="text-gold/60 hover:text-gold transition-colors p-1"
           title="Predicción de campeón"
         >
@@ -124,14 +122,5 @@ export default function TopBar({ rooms, user, onLogout }) {
         </div>
       </div>
     </div>
-
-      {championOpen && (
-        <ChampionPickModal
-          user={user}
-          roomId={currentRoomId}
-          onClose={() => setChampionOpen(false)}
-        />
-      )}
-    </>
   )
 }
