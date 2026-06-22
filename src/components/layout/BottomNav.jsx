@@ -79,27 +79,30 @@ function CrownIcon() {
 const tabs = [
   { to: '/', label: 'Inicio', Icon: HomeIcon },
   { to: '/predecir', label: 'Predecir', Icon: TargetIcon },
-  { to: '/tabla', label: 'Resultados', Icon: TrophyIcon },
-  { to: '/campeones', label: 'Campeones', Icon: CrownIcon },
+  { to: '/tabla', label: 'Tabla', Icon: TrophyIcon },
+  { to: '/campeones', label: 'Campeón', Icon: CrownIcon },
   { to: '/llave', label: 'Llave', Icon: BracketIcon },
 ]
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-10 bg-surface border-t border-border flex pb-safe">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-10 bg-surface border-t border-border flex"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center gap-1 py-2.5 text-xs transition-colors ${isActive ? 'text-gold' : 'text-muted'}`
+            `flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${isActive ? 'text-gold' : 'text-muted'}`
           }
         >
           {({ isActive }) => (
             <>
               <tab.Icon active={isActive} />
-              <span className="font-medium">{tab.label}</span>
+              <span className="text-[10px] font-medium">{tab.label}</span>
             </>
           )}
         </NavLink>
