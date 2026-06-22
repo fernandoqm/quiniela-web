@@ -274,7 +274,7 @@ export default function Champions({ user }) {
       {/* Predicciones de la sala */}
       {otherPicks.length > 0 && (
         <div>
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-border" />
             <p className="text-xs text-muted uppercase tracking-widest whitespace-nowrap">
               Sala · {otherPicks.length} {otherPicks.length === 1 ? 'predicción' : 'predicciones'}
@@ -282,32 +282,27 @@ export default function Champions({ user }) {
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {otherPicks.map((pick) => (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            {otherPicks.map((pick, idx) => (
               <div
                 key={pick.userId}
-                className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-3 text-center"
+                className={`flex items-center gap-3 px-4 py-3 ${idx < otherPicks.length - 1 ? 'border-b border-border' : ''}`}
               >
-                <span className="text-xl leading-none">
-                  {pick.position >= 0 && pick.position < 3 ? MEDALS[pick.position] : `${pick.position + 1}°`}
-                </span>
-                <div className="w-14 h-14 flex items-center justify-center">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
                   {pick.team?.crest ? (
                     <img
                       src={pick.team.crest}
-                      className="w-14 h-14 object-contain"
+                      className="w-8 h-8 object-contain"
                       onError={(e) => { e.currentTarget.style.display = 'none' }}
                     />
                   ) : (
-                    <div className="w-14 h-14 rounded-xl bg-border" />
+                    <div className="w-8 h-8 rounded bg-border" />
                   )}
                 </div>
-                <div className="min-w-0 w-full">
-                  <p className="text-sm font-bold leading-tight truncate">
-                    {pick.team?.shortName || pick.team?.name}
-                  </p>
-                  <p className="text-xs text-muted mt-1 truncate">{pick.alias}</p>
-                </div>
+                <span className="text-sm font-semibold flex-1 truncate">
+                  {pick.team?.shortName || pick.team?.name}
+                </span>
+                <span className="text-xs text-muted shrink-0">{pick.alias}</span>
               </div>
             ))}
           </div>
