@@ -78,9 +78,9 @@ function CrownIcon() {
 
 const tabs = [
   { to: '/', label: 'Inicio', Icon: HomeIcon },
-  { to: '/predecir', label: 'Predecir', Icon: TargetIcon },
+  { to: '/predecir', label: 'Pred', Icon: TargetIcon },
   { to: '/tabla', label: 'Tabla', Icon: TrophyIcon },
-  { to: '/campeones', label: 'Campeón', Icon: CrownIcon },
+  { to: '/campeones', label: 'Camp', Icon: CrownIcon },
   { to: '/llave', label: 'Llave', Icon: BracketIcon },
 ]
 
