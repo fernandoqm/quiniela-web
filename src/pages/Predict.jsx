@@ -304,7 +304,7 @@ export default function Predict({ user }) {
           ].map((award) => (
             <button
               key={award.key}
-              onClick={() => navigate('/campeones', { state: { scrollTo: award.key } })}
+              onClick={() => navigate('/premios', { state: { scrollTo: award.key } })}
               className="flex-1 flex flex-col items-center gap-1 bg-card border border-border rounded-xl py-2.5 text-center hover:border-gold/40 active:scale-[0.97] transition-all"
             >
               <span className="text-base">{award.icon}</span>

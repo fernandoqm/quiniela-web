@@ -11,6 +11,7 @@ import Rooms from './pages/Rooms'
 import Admin from './pages/Admin'
 import Bracket from './pages/Bracket'
 import Champions from './pages/Champions'
+import Awards from './pages/Awards'
 import Spinner from './components/ui/Spinner'
 
 function AppLayout({ user, logout }) {
@@ -29,6 +30,7 @@ function AppLayout({ user, logout }) {
           } />
           <Route path="/llave" element={<Bracket />} />
           <Route path="/campeones" element={<Champions user={user} />} />
+          <Route path="/premios" element={<Awards user={user} />} />
           <Route path="/admin" element={<Admin user={user} rooms={rooms} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
