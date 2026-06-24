@@ -282,18 +282,37 @@ export default function Predict({ user }) {
   return (
     <div className="flex flex-col gap-4 pb-4">
 
-      {/* Botón campeón */}
-      <button
-        onClick={() => navigate('/campeones')}
-        className="w-full flex items-center gap-3 bg-card border border-gold/30 rounded-2xl px-4 py-3.5 text-left hover:border-gold/60 active:scale-[0.98] transition-all"
-      >
-        <span className="text-2xl">👑</span>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-gold">Predice el campeón</p>
-          <p className="text-xs text-muted">¿Quién levantará el trofeo?</p>
+      {/* Botón campeón + accesos directos a premios */}
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={() => navigate('/campeones')}
+          className="w-full flex items-center gap-3 bg-card border border-gold/30 rounded-2xl px-4 py-3.5 text-left hover:border-gold/60 active:scale-[0.98] transition-all"
+        >
+          <span className="text-2xl">👑</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-gold">Predice el campeón</p>
+            <p className="text-xs text-muted">¿Quién levantará el trofeo?</p>
+          </div>
+          <span className="text-muted text-xl leading-none">›</span>
+        </button>
+
+        <div className="flex gap-2">
+          {[
+            { key: 'topScorer',   icon: '🥾', label: 'Bota de Oro' },
+            { key: 'goldenBall',  icon: '⚽', label: 'Balón de Oro' },
+            { key: 'goldenGlove', icon: '🧤', label: 'Guante de Oro' },
+          ].map((award) => (
+            <button
+              key={award.key}
+              onClick={() => navigate('/campeones', { state: { scrollTo: award.key } })}
+              className="flex-1 flex flex-col items-center gap-1 bg-card border border-border rounded-xl py-2.5 text-center hover:border-gold/40 active:scale-[0.97] transition-all"
+            >
+              <span className="text-base">{award.icon}</span>
+              <span className="text-[10px] text-muted leading-tight">{award.label}</span>
+            </button>
+          ))}
         </div>
-        <span className="text-muted text-xl leading-none">›</span>
-      </button>
+      </div>
 
       {/* Partido en vivo — solo si hay uno activo */}
       {liveMatch && (

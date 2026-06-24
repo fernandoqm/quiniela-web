@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import useAppStore from '../store/useAppStore'
@@ -217,6 +218,7 @@ const MEDALS = ['🥇', '🥈', '🥉']
 
 export default function Champions({ user }) {
   const { currentRoomId } = useAppStore()
+  const location = useLocation()
 
   // Champion
   const [picks, setPicks] = useState([])
@@ -282,6 +284,13 @@ export default function Champions({ user }) {
       setQualifiedTlas(tlas)
     })
   }, [])
+
+  useEffect(() => {
+    const key = location.state?.scrollTo
+    if (!key) return
+    const el = document.getElementById(key)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [location.state?.scrollTo])
 
   const handlePick = async (team) => {
     setSaving(true)
@@ -467,7 +476,7 @@ export default function Champions({ user }) {
           const allOthers = [...othersWithPick, ...othersNoPick]
 
           return (
-            <div key={award.key}>
+            <div key={award.key} id={award.key}>
               {/* Header del premio */}
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">{award.icon}</span>
