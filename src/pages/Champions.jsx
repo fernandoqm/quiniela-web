@@ -103,10 +103,6 @@ function TeamPicker({ onPick, onClose, saving }) {
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
-
-const MEDALS = ['🥇', '🥈', '🥉']
-
 export default function Champions({ user }) {
   const { currentRoomId } = useAppStore()
 
@@ -175,8 +171,6 @@ export default function Champions({ user }) {
     })
 
   const otherPicks = enrichedPicks.filter((p) => !p.isCurrentUser)
-
-  const myAwardPick = awardPicks.find((p) => p.userId === user?.uid)
 
   return (
     <div className="flex flex-col pb-4">
