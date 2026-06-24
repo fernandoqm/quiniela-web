@@ -67,20 +67,10 @@ function BracketIcon() {
   )
 }
 
-function CrownIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 19h20l-2-9-5 5-3-8-3 8-5-5-2 9z" />
-      <line x1="2" y1="22" x2="22" y2="22" />
-    </svg>
-  )
-}
-
 const tabs = [
   { to: '/', label: 'Inicio', Icon: HomeIcon },
-  { to: '/predecir', label: 'Pred.', Icon: TargetIcon },
+  { to: '/predecir', label: 'Predecir', Icon: TargetIcon },
   { to: '/tabla', label: 'Tabla', Icon: TrophyIcon },
-  { to: '/campeones', label: 'Camp.', Icon: CrownIcon },
   { to: '/llave', label: 'Llave', Icon: BracketIcon },
 ]
 
