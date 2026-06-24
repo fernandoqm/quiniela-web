@@ -4,7 +4,7 @@ import { db } from '../lib/firebase'
 import useAppStore from '../store/useAppStore'
 import {
   saveChampionPick, subscribeToChampionPicks, subscribeToLeaderboard,
-  saveAwardPicks, subscribeToAwardPicks, getPlayersDoc,
+  saveAwardPicks, subscribeToAwardPicks, getPlayersDoc, getAwardResults,
 } from '../lib/firestore'
 import Spinner from '../components/ui/Spinner'
 
@@ -228,6 +228,7 @@ export default function Champions({ user }) {
 
   // Awards
   const [awardPicks, setAwardPicks] = useState([])
+  const [awardResults, setAwardResults] = useState({})
   const [players, setPlayers] = useState([])
   const [qualifiedTlas, setQualifiedTlas] = useState(new Set())
   const [activePicker, setActivePicker] = useState(null)
@@ -266,6 +267,7 @@ export default function Champions({ user }) {
     getPlayersDoc().then((data) => {
       if (data) setPlayers(data.players || [])
     })
+    getAwardResults().then(setAwardResults)
   }, [])
 
   useEffect(() => {
@@ -453,6 +455,9 @@ export default function Champions({ user }) {
       <div className="flex flex-col gap-5">
         {AWARDS.map((award) => {
           const myPick = myAwardPick?.[award.key] ?? null
+          const result = awardResults[award.key] ?? null
+          const isCorrect = result && myPick && myPick.id === result.id
+          const isWrong  = result && myPick && myPick.id !== result.id
           const othersWithPick = awardPicks
             .filter((p) => p.userId !== user?.uid && p[award.key])
             .map((p) => ({ alias: getAlias(p.userId), pick: p[award.key] }))
@@ -474,7 +479,7 @@ export default function Champions({ user }) {
 
               {/* Mi pick */}
               {myPick ? (
-                <div className="flex items-center gap-3 bg-card border border-gold/25 rounded-2xl px-4 py-3 mb-2">
+                <div className={`flex items-center gap-3 bg-card rounded-2xl px-4 py-3 mb-2 border ${isCorrect ? 'border-win/50' : isWrong ? 'border-danger/40' : 'border-gold/25'}`}>
                   <div className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-[10px] font-bold text-muted shrink-0">
                     {myPick.shirtNumber ?? '·'}
                   </div>
@@ -487,7 +492,13 @@ export default function Champions({ user }) {
                       <p className="text-xs text-muted">{myPick.teamShortName}</p>
                     </div>
                   </div>
-                  <span className="text-xs text-gold mr-1">✓</span>
+                  {isCorrect ? (
+                    <span className="text-xs font-bold text-win shrink-0">+100 pts</span>
+                  ) : isWrong ? (
+                    <span className="text-xs text-danger shrink-0">✗</span>
+                  ) : (
+                    <span className="text-xs text-gold mr-1 shrink-0">✓</span>
+                  )}
                   {!isLocked && (
                     <button
                       onClick={() => setActivePicker(award.key)}

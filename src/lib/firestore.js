@@ -327,6 +327,51 @@ export async function getLast32TeamTlas() {
   return tlas
 }
 
+// ── Award Results (admin sets actual winners) ──────────────────────
+export async function saveAwardResults(results) {
+  await setDoc(doc(db, 'meta', 'award_results'), {
+    ...results,
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+}
+
+export async function getAwardResults() {
+  const snap = await getDoc(doc(db, 'meta', 'award_results'))
+  return snap.exists() ? snap.data() : {}
+}
+
+export async function calculateAwardPoints(awardResults) {
+  const AWARD_KEYS = ['topScorer', 'goldenBall', 'goldenGlove']
+  const snap = await getDocs(collection(db, 'award_picks'))
+  const batch = writeBatch(db)
+  let totalPoints = 0
+  let usersRewarded = 0
+
+  snap.docs.forEach((d) => {
+    const pick = d.data()
+    const alreadyScored = pick.scoredAwards || []
+    const pending = AWARD_KEYS.filter((k) => awardResults[k] && !alreadyScored.includes(k))
+    if (pending.length === 0) return
+
+    let pts = 0
+    pending.forEach((k) => {
+      if (pick[k]?.id === awardResults[k]?.id) pts += 100
+    })
+
+    batch.update(d.ref, { scoredAwards: arrayUnion(...pending) })
+    if (pts > 0) {
+      batch.update(doc(db, 'rooms', pick.roomId, 'members', pick.userId), {
+        totalPoints: increment(pts),
+      })
+      totalPoints += pts
+      usersRewarded++
+    }
+  })
+
+  await batch.commit()
+  return { totalPoints, usersRewarded }
+}
+
 // ── Award Picks ────────────────────────────────────────────────────
 export async function saveAwardPicks(roomId, userId, picks) {
   await setDoc(

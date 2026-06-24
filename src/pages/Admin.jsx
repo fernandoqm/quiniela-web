@@ -1,12 +1,86 @@
 import { useState, useEffect } from 'react'
 import { useMatches } from '../hooks/useMatches'
 import { useLeaderboard } from '../hooks/useLeaderboard'
-import { getPredictions, adminFixPoints, adminSetMemberTotal, resetTTL, saveMatches, savePlayers, getPlayersDoc, getLast32TeamTlas } from '../lib/firestore'
+import { getPredictions, adminFixPoints, adminSetMemberTotal, resetTTL, saveMatches, savePlayers, getPlayersDoc, getLast32TeamTlas, saveAwardResults, getAwardResults, calculateAwardPoints } from '../lib/firestore'
 import { fetchAllMatches, fetchTeamsWithSquads } from '../lib/footballApi'
 import { calculatePoints } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
 
 const ADMIN_KEY = '0pt1m7sPr1m3'
+
+const AWARDS_CONFIG = [
+  { key: 'topScorer',   icon: '🥾', title: 'Bota de Oro',   positionFilter: null },
+  { key: 'goldenBall',  icon: '⚽', title: 'Balón de Oro',  positionFilter: null },
+  { key: 'goldenGlove', icon: '🧤', title: 'Guante de Oro', positionFilter: 'Goalkeeper' },
+]
+
+function AdminPlayerPicker({ title, positionFilter, players, onPick, onClose }) {
+  const [search, setSearch] = useState('')
+
+  const filtered = players
+    .filter((p) => !positionFilter || p.position === positionFilter)
+    .filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.teamName || '').toLowerCase().includes(search.toLowerCase())
+    )
+
+  const grouped = filtered.reduce((acc, p) => {
+    if (!acc[p.teamName]) acc[p.teamName] = { crest: p.teamCrest, players: [] }
+    acc[p.teamName].players.push(p)
+    return acc
+  }, {})
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end" onClick={onClose}>
+      <div className="bg-surface rounded-t-3xl flex flex-col" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
+        <div className="px-4 py-3 shrink-0">
+          <p className="font-bold text-sm mb-3">{title}</p>
+          <input
+            type="text"
+            placeholder="Buscar jugador o equipo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+            className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-muted outline-none focus:border-gold"
+          />
+        </div>
+        <div className="overflow-y-auto flex-1 border-t border-border">
+          {players.length === 0 ? (
+            <p className="text-center text-muted text-sm py-8 px-4">Sincroniza plantillas primero</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-muted text-sm py-8">Sin resultados</p>
+          ) : (
+            Object.entries(grouped).map(([teamName, data]) => (
+              <div key={teamName}>
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-card/30 border-b border-border">
+                  {data.crest && <img src={data.crest} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />}
+                  <span className="text-[10px] font-bold text-muted uppercase tracking-widest">{teamName}</span>
+                </div>
+                {data.players.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => onPick(p)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-card transition-colors text-left border-b border-border/30 last:border-0"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center text-[10px] font-bold text-muted shrink-0">
+                      {p.shirtNumber ?? '·'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{p.name}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function toDate(val) {
   return val?.toDate ? val.toDate() : new Date(val)
@@ -90,14 +164,53 @@ function AdminPanel({ rooms }) {
   const [syncingPlayers, setSyncingPlayers] = useState(false)
   const [syncPlayersMsg, setSyncPlayersMsg] = useState('')
   const [playersInfo, setPlayersInfo] = useState(null)
+  const [awardResults, setAwardResults] = useState({})
+  const [awardPlayers, setAwardPlayers] = useState([])
+  const [activeAwardPicker, setActiveAwardPicker] = useState(null)
+  const [calculatingAwards, setCalculatingAwards] = useState(false)
+  const [calcAwardsMsg, setCalcAwardsMsg] = useState('')
 
   const { finishedMatches, loading } = useMatches()
 
   useEffect(() => {
     getPlayersDoc().then((data) => {
-      if (data) setPlayersInfo({ teamsCount: data.teamsCount, playerCount: data.players?.length ?? 0, syncedAt: data.syncedAt })
+      if (data) {
+        setPlayersInfo({ teamsCount: data.teamsCount, playerCount: data.players?.length ?? 0, syncedAt: data.syncedAt })
+        setAwardPlayers(data.players || [])
+      }
     })
+    getAwardResults().then(setAwardResults)
   }, [])
+
+  const handleSaveAwardResult = async (awardKey, player) => {
+    const updated = { ...awardResults, [awardKey]: player }
+    await saveAwardResults({ [awardKey]: player })
+    setAwardResults(updated)
+    setActiveAwardPicker(null)
+  }
+
+  const handleCalculateAwardPoints = async () => {
+    const hasResults = AWARDS_CONFIG.some((a) => awardResults[a.key])
+    if (!hasResults) {
+      setCalcAwardsMsg('⚠️ Define al menos un ganador antes de calcular.')
+      setTimeout(() => setCalcAwardsMsg(''), 5000)
+      return
+    }
+    setCalculatingAwards(true)
+    setCalcAwardsMsg('')
+    try {
+      const { totalPoints, usersRewarded } = await calculateAwardPoints(awardResults)
+      setCalcAwardsMsg(
+        usersRewarded > 0
+          ? `✓ ${totalPoints} pts repartidos entre ${usersRewarded} usuario(s)`
+          : '✓ Calculado — ningún usuario acertó o ya estaban procesados'
+      )
+    } catch (e) {
+      setCalcAwardsMsg(`Error: ${e.message}`)
+    }
+    setCalculatingAwards(false)
+    setTimeout(() => setCalcAwardsMsg(''), 8000)
+  }
 
   const handleSyncPlayers = async () => {
     setSyncingPlayers(true)
@@ -244,6 +357,50 @@ function AdminPanel({ rooms }) {
         </button>
         {syncPlayersMsg && (
           <p className="text-xs text-center mt-2 text-subtle">{syncPlayersMsg}</p>
+        )}
+      </div>
+
+      {/* Resultados de premios individuales */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest mb-2">Resultados de premios</p>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden mb-3">
+          {AWARDS_CONFIG.map((award, i) => {
+            const result = awardResults[award.key]
+            return (
+              <div key={award.key} className={`flex items-center gap-3 px-4 py-3 ${i < AWARDS_CONFIG.length - 1 ? 'border-b border-border' : ''}`}>
+                <span className="text-xl shrink-0">{award.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted">{award.title}</p>
+                  {result ? (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {result.teamCrest && (
+                        <img src={result.teamCrest} className="w-3.5 h-3.5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                      )}
+                      <p className="text-sm font-semibold text-white truncate">{result.name}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted">Sin definir</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setActiveAwardPicker(award.key)}
+                  className="text-xs text-gold border border-gold/30 rounded-lg px-3 py-1.5 hover:bg-gold/10 transition-colors shrink-0"
+                >
+                  {result ? 'Cambiar' : 'Definir'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <button
+          onClick={handleCalculateAwardPoints}
+          disabled={calculatingAwards}
+          className="w-full bg-win/10 border border-win/30 text-win font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40"
+        >
+          {calculatingAwards ? 'Calculando...' : 'Calcular puntos de premios (todas las salas)'}
+        </button>
+        {calcAwardsMsg && (
+          <p className="text-xs text-center mt-2 text-subtle">{calcAwardsMsg}</p>
         )}
       </div>
 
@@ -422,6 +579,16 @@ function AdminPanel({ rooms }) {
             </div>
           )}
         </div>
+      )}
+
+      {activeAwardPicker && (
+        <AdminPlayerPicker
+          title={`Ganador · ${AWARDS_CONFIG.find((a) => a.key === activeAwardPicker)?.title}`}
+          positionFilter={AWARDS_CONFIG.find((a) => a.key === activeAwardPicker)?.positionFilter ?? null}
+          players={awardPlayers}
+          onPick={(player) => handleSaveAwardResult(activeAwardPicker, player)}
+          onClose={() => setActiveAwardPicker(null)}
+        />
       )}
     </div>
   )
