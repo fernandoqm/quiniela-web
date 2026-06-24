@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useMatches } from '../hooks/useMatches'
 import { useLeaderboard } from '../hooks/useLeaderboard'
-import { getPredictions, adminFixPoints, adminSetMemberTotal, resetTTL, saveMatches } from '../lib/firestore'
-import { fetchAllMatches } from '../lib/footballApi'
+import { getPredictions, adminFixPoints, adminSetMemberTotal, resetTTL, saveMatches, savePlayers, getPlayersDoc, getLast32TeamTlas } from '../lib/firestore'
+import { fetchAllMatches, fetchTeamsWithSquads } from '../lib/footballApi'
 import { calculatePoints } from '../lib/scoring'
 import Spinner from '../components/ui/Spinner'
 
@@ -87,8 +87,44 @@ function AdminPanel({ rooms }) {
   const [savingMember, setSavingMember] = useState(null)
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
+  const [syncingPlayers, setSyncingPlayers] = useState(false)
+  const [syncPlayersMsg, setSyncPlayersMsg] = useState('')
+  const [playersInfo, setPlayersInfo] = useState(null)
 
   const { finishedMatches, loading } = useMatches()
+
+  useEffect(() => {
+    getPlayersDoc().then((data) => {
+      if (data) setPlayersInfo({ teamsCount: data.teamsCount, playerCount: data.players?.length ?? 0, syncedAt: data.syncedAt })
+    })
+  }, [])
+
+  const handleSyncPlayers = async () => {
+    setSyncingPlayers(true)
+    setSyncPlayersMsg('')
+    try {
+      const qualifiedTlas = await getLast32TeamTlas()
+      if (qualifiedTlas.size === 0) {
+        setSyncPlayersMsg('⚠️ No hay equipos clasificados aún. Sincroniza los partidos primero.')
+        setSyncingPlayers(false)
+        return
+      }
+      const allTeams = await fetchTeamsWithSquads()
+      const qualifiedTeams = allTeams.filter((t) => qualifiedTlas.has(t.tla))
+      if (qualifiedTeams.length === 0) {
+        setSyncPlayersMsg('⚠️ Sin coincidencias entre la API y los equipos clasificados. Verifica los TLAs.')
+        setSyncingPlayers(false)
+        return
+      }
+      const playerCount = await savePlayers(qualifiedTeams)
+      setPlayersInfo({ teamsCount: qualifiedTeams.length, playerCount, syncedAt: new Date() })
+      setSyncPlayersMsg(`✓ ${playerCount} jugadores de ${qualifiedTeams.length} equipos clasificados`)
+    } catch (e) {
+      setSyncPlayersMsg(`Error: ${e.message}`)
+    }
+    setSyncingPlayers(false)
+    setTimeout(() => setSyncPlayersMsg(''), 8000)
+  }
 
   const handleSync = async () => {
     setSyncing(true)
@@ -180,6 +216,34 @@ function AdminPanel({ rooms }) {
         </button>
         {syncMsg && (
           <p className="text-xs text-center mt-2 text-subtle">{syncMsg}</p>
+        )}
+      </div>
+
+      {/* Sincronizar plantillas de jugadores */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-widest mb-2">Plantillas de jugadores</p>
+        {playersInfo && (
+          <div className="mb-2 bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">{playersInfo.playerCount} jugadores</p>
+              <p className="text-xs text-muted">{playersInfo.teamsCount} equipos</p>
+            </div>
+            <span className="text-xs text-muted">
+              {playersInfo.syncedAt
+                ? new Date(playersInfo.syncedAt?.toDate?.() ?? playersInfo.syncedAt).toLocaleDateString('es-CR', { day: 'numeric', month: 'short' })
+                : '—'}
+            </span>
+          </div>
+        )}
+        <button
+          onClick={handleSyncPlayers}
+          disabled={syncingPlayers}
+          className="w-full bg-info/10 border border-info/30 text-info font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40"
+        >
+          {syncingPlayers ? 'Sincronizando plantillas...' : 'Sincronizar plantillas desde API'}
+        </button>
+        {syncPlayersMsg && (
+          <p className="text-xs text-center mt-2 text-subtle">{syncPlayersMsg}</p>
         )}
       </div>
 

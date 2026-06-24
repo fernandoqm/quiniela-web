@@ -283,6 +283,64 @@ async function recalculateMemberTotal(roomId, userId) {
   await updateDoc(doc(db, 'rooms', roomId, 'members', userId), { totalPoints: total })
 }
 
+// ── Players ────────────────────────────────────────────────────────
+export async function savePlayers(teams) {
+  const players = []
+  teams.forEach((team) => {
+    ;(team.squad || []).forEach((p) => {
+      players.push({
+        id: p.id,
+        name: p.name,
+        position: p.position || '',
+        shirtNumber: p.shirtNumber ?? null,
+        nationality: p.nationality || '',
+        teamId: team.id,
+        teamName: team.name,
+        teamShortName: team.shortName,
+        teamTla: team.tla,
+        teamCrest: team.crest,
+      })
+    })
+  })
+  await setDoc(doc(db, 'meta', 'players'), {
+    players,
+    syncedAt: serverTimestamp(),
+    teamsCount: teams.length,
+  })
+  return players.length
+}
+
+export async function getPlayersDoc() {
+  const snap = await getDoc(doc(db, 'meta', 'players'))
+  return snap.exists() ? snap.data() : null
+}
+
+export async function getLast32TeamTlas() {
+  const q = query(collection(db, 'matches'), where('stage', '==', 'LAST_32'))
+  const snap = await getDocs(q)
+  const tlas = new Set()
+  snap.docs.forEach((d) => {
+    const m = d.data()
+    if (m.homeTeam?.tla) tlas.add(m.homeTeam.tla)
+    if (m.awayTeam?.tla) tlas.add(m.awayTeam.tla)
+  })
+  return tlas
+}
+
+// ── Award Picks ────────────────────────────────────────────────────
+export async function saveAwardPicks(roomId, userId, picks) {
+  await setDoc(
+    doc(db, 'award_picks', `${roomId}_${userId}`),
+    { userId, roomId, ...picks, submittedAt: serverTimestamp() },
+    { merge: true }
+  )
+}
+
+export function subscribeToAwardPicks(roomId, callback) {
+  const q = query(collection(db, 'award_picks'), where('roomId', '==', roomId))
+  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+}
+
 // ── Champion Picks ─────────────────────────────────────────────────────
 export async function saveChampionPick(roomId, userId, team) {
   await setDoc(doc(db, 'champion_picks', `${roomId}_${userId}`), {

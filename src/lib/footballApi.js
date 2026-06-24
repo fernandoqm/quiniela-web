@@ -59,6 +59,24 @@ export function mapApiMatch(m) {
   }
 }
 
+export async function fetchTeamsWithSquads() {
+  const data = await apiFetch(`/competitions/${COMPETITION_ID}/teams`)
+  return (data.teams || []).map((team) => ({
+    id: team.id,
+    name: team.name,
+    shortName: team.shortName || team.name,
+    tla: team.tla || '',
+    crest: team.crest || '',
+    squad: (team.squad || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      position: p.position || '',
+      shirtNumber: p.shirtNumber ?? null,
+      nationality: p.nationality || '',
+    })),
+  }))
+}
+
 export function isMatchWindow(kickoff) {
   const now = Date.now()
   const start = new Date(kickoff).getTime()
