@@ -87,9 +87,10 @@ const tabs = [
 export default function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-10 bg-surface border-t border-border flex"
+      className="fixed bottom-0 left-0 right-0 z-10 bg-surface border-t border-border"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
+      <div className="max-w-lg mx-auto flex">
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
@@ -107,6 +108,7 @@ export default function BottomNav() {
           )}
         </NavLink>
       ))}
+      </div>
     </nav>
   )
 }

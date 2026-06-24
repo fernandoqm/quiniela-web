@@ -23,7 +23,8 @@ export default function TopBar({ rooms, user, onLogout }) {
   const me = members.find((m) => m.uid === user?.uid)
 
   return (
-    <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between gap-3">
+    <div className="fixed top-0 left-0 right-0 z-10 bg-surface/95 backdrop-blur border-b border-border">
+    <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-3">
       {/* Logo */}
       <div className="flex items-center gap-1.5 shrink-0">
         <TrophyIcon size={22} />
@@ -121,6 +122,7 @@ export default function TopBar({ rooms, user, onLogout }) {
           )}
         </div>
       </div>
+    </div>
     </div>
   )
 }

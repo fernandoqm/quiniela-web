@@ -19,7 +19,7 @@ function AppLayout({ user, logout }) {
   return (
     <div className="min-h-screen bg-bg text-white">
       <TopBar rooms={rooms} user={user} onLogout={logout} />
-      <main className="max-w-lg mx-auto px-4 pt-4 pb-24">
+      <main className="max-w-lg mx-auto px-4 pt-16 pb-24">
         <Routes>
           <Route path="/" element={<Dashboard user={user} rooms={rooms} />} />
           <Route path="/predecir" element={<Predict user={user} />} />
