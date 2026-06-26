@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { subscribeToMatches, saveMatches, saveMatch, shouldRefresh, markRefreshed, shouldRefreshLive, markLiveRefreshed } from '../lib/firestore'
-import { fetchAllMatches, fetchMatchById, isMatchWindow } from '../lib/footballApi'
+import { fetchAllMatches, fetchLiveMatches, fetchMatchById, isMatchWindow } from '../lib/footballApi'
 
 const CACHE_TTL = 60 * 1000 // 60 seconds
 
@@ -63,5 +63,15 @@ export function useMatches() {
   const finishedMatches = matches.filter((m) => m.status === 'FINISHED')
   const nextMatch = upcomingMatches[0] || null
 
-  return { matches, loading, liveMatches, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared, forceRefreshMatch }
+  // Trae todos los partidos EN VIVO/PAUSED desde la API con cache-bust y los guarda
+  const refreshLiveAll = useCallback(async () => {
+    try {
+      const live = await fetchLiveMatches()
+      if (live.length > 0) await saveMatches(live)
+    } catch (e) {
+      console.error('Error actualizando partidos en vivo:', e)
+    }
+  }, [])
+
+  return { matches, loading, liveMatches, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared, forceRefreshMatch, refreshLiveAll }
 }

@@ -209,7 +209,7 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatches, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch } = useMatches()
+  const { matches, loading, liveMatches, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch, refreshLiveAll } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(false)
   const [visibleDays, setVisibleDays] = useState(2)
@@ -264,17 +264,22 @@ export default function Dashboard({ user, rooms }) {
   }, [])
 
   // Refresh automático solo durante ventana de partido (90s)
-  // Si hay varios partidos en vivo simultáneos, se refrescan todos
+  // Incluye partidos cuyo kickoff ya pasó pero Firestore aún los muestra como TIMED
   useEffect(() => {
     if (!inMatchWindow) return
-    const toRefresh = liveMatches.length > 0
-      ? liveMatches.filter((m) => m.apiId)
+    const staleTimedMatches = matches.filter((m) => {
+      if (m.status !== 'TIMED' || !m.apiId) return false
+      const kickoff = toDate(m.kickoff).getTime()
+      return now >= kickoff
+    })
+    const toRefresh = liveMatches.length > 0 || staleTimedMatches.length > 0
+      ? [...liveMatches, ...staleTimedMatches].filter((m) => m.apiId)
       : matchToWatch?.apiId ? [matchToWatch] : []
     if (toRefresh.length === 0) return
     toRefresh.forEach((m) => forceRefreshMatch(m.apiId))
     const id = setInterval(() => toRefresh.forEach((m) => forceRefreshMatch(m.apiId)), 90 * 1000)
     return () => clearInterval(id)
-  }, [inMatchWindow, liveMatches.map((m) => m.id).join(','), matchToWatch?.id])
+  }, [inMatchWindow, liveMatches.map((m) => m.id).join(','), matchToWatch?.id, now])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -282,7 +287,8 @@ export default function Dashboard({ user, rooms }) {
     try {
       await resetTTL()
       await refreshAll()
-      if (matchToWatch?.apiId) await forceRefreshMatch(matchToWatch.apiId)
+      // Si estamos en ventana de partido, traer partidos en vivo con cache-bust
+      if (inMatchWindow) await refreshLiveAll()
     } catch (e) {
       console.error('Error al actualizar:', e)
       setRefreshError(true)
