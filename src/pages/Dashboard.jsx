@@ -260,7 +260,7 @@ function Onboarding() {
 // ── Dashboard principal ──────────────────────────────────────────────
 export default function Dashboard({ user, rooms }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
-  const { matches, loading, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch } = useMatches()
+  const { matches, loading, liveMatches, liveMatch, nextMatch, finishedMatches, refreshAll, refreshLiveShared, forceRefreshMatch } = useMatches()
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(false)
   const [visibleDays, setVisibleDays] = useState(2)
@@ -372,8 +372,14 @@ export default function Dashboard({ user, rooms }) {
         </button>
       </div>
 
-      {/* EN VIVO — solo aparece si hay partido activo */}
-      {liveMatch && <LiveCard match={liveMatch} roomId={currentRoomId} userId={user?.uid} />}
+      {/* EN VIVO — aparece un card por cada partido activo */}
+      {liveMatches.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {liveMatches.map((m) => (
+            <LiveCard key={m.id} match={m} roomId={currentRoomId} userId={user?.uid} />
+          ))}
+        </div>
+      )}
 
       {/* Cuenta regresiva al próximo partido */}
       {nextMatch && <NextMatchCountdown match={nextMatch} />}

@@ -57,10 +57,11 @@ export function useMatches() {
     await markLiveRefreshed()
   }, [])
 
-  const liveMatch = matches.find((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+  const liveMatches = matches.filter((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+  const liveMatch = liveMatches[0] || null
   const upcomingMatches = matches.filter((m) => m.status === 'TIMED')
   const finishedMatches = matches.filter((m) => m.status === 'FINISHED')
   const nextMatch = upcomingMatches[0] || null
 
-  return { matches, loading, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared, forceRefreshMatch }
+  return { matches, loading, liveMatches, liveMatch, nextMatch, upcomingMatches, finishedMatches, refreshAll, refreshLiveMatch, refreshLiveShared, forceRefreshMatch }
 }

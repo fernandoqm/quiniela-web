@@ -52,7 +52,7 @@ export default function App() {
   if (!user) return <Login onLogin={login} />
 
   return (
-    <HashRouter>
+    <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AppLayout user={user} logout={logout} />
     </HashRouter>
   )
