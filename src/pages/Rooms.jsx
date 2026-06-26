@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import useAppStore from '../store/useAppStore'
 import { updateMemberAlias, deleteRoom } from '../lib/firestore'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import Spinner from '../components/ui/Spinner'
 
 const APP_URL = 'https://fernandoqm.github.io/quiniela-web/'
@@ -40,14 +42,24 @@ function RoomItem({ room, isActive, userId, onSelect, onReload }) {
     setTimeout(() => setCopied(false), 2500)
   }
 
+  const [aliasError, setAliasError] = useState('')
+
   const handleSaveAlias = async (e) => {
     e.stopPropagation()
-    if (validateAlias(newAlias)) return
+    const err = validateAlias(newAlias)
+    if (err) { setAliasError(err); return }
+    setAliasError('')
     setSavingAlias(true)
-    await updateMemberAlias(room.id, userId, newAlias.trim())
+    try {
+      const snap = await getDocs(collection(db, 'rooms', room.id, 'members'))
+      const aliasLower = newAlias.trim().toLowerCase()
+      const taken = snap.docs.some((d) => d.id !== userId && d.data().alias?.toLowerCase() === aliasLower)
+      if (taken) { setAliasError('Ese alias ya está en uso en esta sala'); setSavingAlias(false); return }
+      await updateMemberAlias(room.id, userId, newAlias.trim())
+      setEditingAlias(false)
+      onReload()
+    } catch { setAliasError('Error al guardar') }
     setSavingAlias(false)
-    setEditingAlias(false)
-    onReload()
   }
 
   const handleDelete = async (e) => {
@@ -81,28 +93,31 @@ function RoomItem({ room, isActive, userId, onSelect, onReload }) {
 
       {/* Editor de alias */}
       {editingAlias ? (
-        <div className="px-3 pb-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <input
-            value={newAlias}
-            onChange={(e) => setNewAlias(e.target.value)}
-            maxLength={20}
-            placeholder="Tu nuevo alias..."
-            autoFocus
-            className="flex-1 bg-surface border border-border rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-gold/50"
-          />
-          <button
-            onClick={handleSaveAlias}
-            disabled={savingAlias || !newAlias.trim()}
-            className="px-3 py-2 bg-gold text-bg rounded-xl text-xs font-bold disabled:opacity-50"
-          >
-            {savingAlias ? '...' : '✓'}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setEditingAlias(false); setNewAlias(room.myAlias || '') }}
-            className="px-3 py-2 bg-surface border border-border rounded-xl text-xs text-muted"
-          >
-            ✕
-          </button>
+        <div className="px-3 pb-3 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-2">
+            <input
+              value={newAlias}
+              onChange={(e) => { setNewAlias(e.target.value); setAliasError('') }}
+              maxLength={20}
+              placeholder="Tu nuevo alias..."
+              autoFocus
+              className={`flex-1 bg-surface border rounded-xl px-3 py-2 text-sm text-white outline-none transition-colors ${aliasError ? 'border-danger/60 focus:border-danger' : 'border-border focus:border-gold/50'}`}
+            />
+            <button
+              onClick={handleSaveAlias}
+              disabled={savingAlias || !newAlias.trim()}
+              className="px-3 py-2 bg-gold text-bg rounded-xl text-xs font-bold disabled:opacity-50"
+            >
+              {savingAlias ? '...' : '✓'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditingAlias(false); setNewAlias(room.myAlias || ''); setAliasError('') }}
+              className="px-3 py-2 bg-surface border border-border rounded-xl text-xs text-muted"
+            >
+              ✕
+            </button>
+          </div>
+          {aliasError && <p className="text-xs text-danger px-1">{aliasError}</p>}
         </div>
       ) : confirmDelete ? (
         <div className="px-3 pb-3 flex gap-2" onClick={(e) => e.stopPropagation()}>

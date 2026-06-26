@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import confetti from 'canvas-confetti'
+import { fireConfetti, toDate, formatDate, formatStage } from '../lib/utils'
+import { playVictorySound } from '../lib/sounds'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
@@ -11,40 +12,8 @@ import Spinner from '../components/ui/Spinner'
 
 const PAGE_SIZE = 10
 
-function toDate(val) {
-  return val?.toDate ? val.toDate() : new Date(val)
-}
 
-function formatDate(kickoff) {
-  return toDate(kickoff).toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-function formatStage(match) {
-  const g = match.group?.replace('GROUP_', '')
-  if (g && g.length <= 2) return `Grupo ${g}`
-  const stages = {
-    LAST_16: 'Octavos de final',
-    QUARTER_FINALS: 'Cuartos de final',
-    SEMI_FINALS: 'Semifinal',
-    THIRD_PLACE: '3er lugar',
-    FINAL: '🏆 Final',
-  }
-  return stages[match.stage] || ''
-}
-
-function fireConfetti() {
-  const duration = 2500
-  const end = Date.now() + duration
-  const colors = ['#f59e0b', '#fbbf24', '#ffffff', '#4ade80']
-  const frame = () => {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors })
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors })
-    if (Date.now() < end) requestAnimationFrame(frame)
-  }
-  frame()
-}
-
-function MatchResults({ match, roomId, user, members, onUserWon }) {
+function MatchResults({ match, roomId, user, members }) {
   const { predictions, calculateAndSave } = usePredictions(roomId, match.id, { isFinished: true })
   const notifiedWin = useRef(false)
 
@@ -60,10 +29,11 @@ function MatchResults({ match, roomId, user, members, onUserWon }) {
   const winners = topPoints > 0 ? sorted.filter((p) => p.points === topPoints) : []
 
   useEffect(() => {
-    if (!onUserWon || winners.length === 0 || notifiedWin.current) return
+    if (winners.length === 0 || notifiedWin.current) return
     if (winners.some((w) => w.userId === user?.uid)) {
       notifiedWin.current = true
-      onUserWon()
+      fireConfetti()
+      playVictorySound()
     }
   }, [winners.length])
 
@@ -129,14 +99,7 @@ export default function Results({ user }) {
   const currentRoomId = useAppStore((s) => s.currentRoomId)
   const { finishedMatches, liveMatch, loading } = useMatches()
   const { members } = useLeaderboard(currentRoomId)
-  const confettiFired = useRef(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-
-  const handleUserWonLastMatch = () => {
-    if (confettiFired.current) return
-    confettiFired.current = true
-    fireConfetti()
-  }
 
   if (loading) return <Spinner className="pt-20" />
 
@@ -189,7 +152,6 @@ export default function Results({ user }) {
                 roomId={currentRoomId}
                 user={user}
                 members={members}
-                onUserWon={i === 0 && !liveMatch ? handleUserWonLastMatch : undefined}
               />
             </div>
           ))}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import Spinner from '../components/ui/Spinner'
+import { toDate, formatDay, formatTime } from '../lib/utils'
 
 const KNOCKOUT_STAGES = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
 
@@ -21,10 +22,6 @@ const CARD_W    = 112
 const CONN_W    = 20
 const CARD_H    = 56
 
-function toDate(val) {
-  return val?.toDate ? val.toDate() : new Date(val)
-}
-
 function getWinner(match) {
   if (!match || match.status !== 'FINISHED') return null
   if (match.homeScore > match.awayScore) return 'home'
@@ -32,19 +29,8 @@ function getWinner(match) {
   return null
 }
 
-function formatMatchDate(kickoff) {
-  const d = toDate(kickoff)
-  const today    = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  if (d.toDateString() === today.toDateString())    return 'Hoy'
-  if (d.toDateString() === tomorrow.toDateString()) return 'Mañana'
-  return d.toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-function formatMatchTime(kickoff) {
-  return toDate(kickoff).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
-}
+const formatMatchDate = formatDay
+const formatMatchTime = formatTime
 
 // ── Bracket components (sin cambios) ────────────────────────────────────────
 

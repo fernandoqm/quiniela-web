@@ -1,64 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import confetti from 'canvas-confetti'
+import { fireConfetti, toDate, formatDay, formatTime, formatStage, groupByDay } from '../lib/utils'
+import { playVictorySound } from '../lib/sounds'
 import TrophyIcon from '../components/ui/TrophyIcon'
 import { useMatches } from '../hooks/useMatches'
 import { usePredictions } from '../hooks/usePredictions'
 import { subscribeToUserStats, resetTTL } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import Spinner from '../components/ui/Spinner'
-
-function fireConfetti() {
-  const duration = 2500
-  const end = Date.now() + duration
-  const colors = ['#f59e0b', '#fbbf24', '#ffffff', '#4ade80']
-  const frame = () => {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors })
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors })
-    if (Date.now() < end) requestAnimationFrame(frame)
-  }
-  frame()
-}
-
-function toDate(val) {
-  return val?.toDate ? val.toDate() : new Date(val)
-}
-
-function formatTime(kickoff) {
-  return toDate(kickoff).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDay(kickoff) {
-  const d = toDate(kickoff)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  if (d.toDateString() === today.toDateString()) return 'Hoy'
-  if (d.toDateString() === tomorrow.toDateString()) return 'Mañana'
-  return d.toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'short' })
-}
-
-function formatStage(match) {
-  const g = match.group?.replace('GROUP_', '')
-  if (g && g.length <= 2) return `Grupo ${g}`
-  const stages = {
-    LAST_16: 'Octavos de final',
-    QUARTER_FINALS: 'Cuartos de final',
-    SEMI_FINALS: 'Semifinal',
-    THIRD_PLACE: '3er lugar',
-    FINAL: '🏆 Final',
-  }
-  return stages[match.stage] || ''
-}
-
-function groupByDay(matches) {
-  return matches.reduce((acc, m) => {
-    const day = formatDay(m.kickoff)
-    if (!acc[day]) acc[day] = []
-    acc[day].push(m)
-    return acc
-  }, {})
-}
 
 // ── Cuenta regresiva al próximo partido ──────────────────────────────
 function NextMatchCountdown({ match }) {
@@ -153,7 +102,7 @@ function LiveCard({ match, roomId, userId }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 text-center">
           {match.homeTeam?.crest
-            ? <img src={match.homeTeam.crest} alt="" className="w-10 h-10 object-contain mx-auto mb-1" />
+            ? <img src={match.homeTeam.crest} alt="" loading="lazy" className="w-10 h-10 object-contain mx-auto mb-1" />
             : <span className="text-3xl block mb-1">🏳️</span>}
           <p className="text-2xl font-black">{match.homeTeam?.tla || match.homeTeam?.shortName}</p>
           <p className="text-xs text-muted mt-0.5">{match.homeTeam?.name || match.homeTeam?.shortName}</p>
@@ -168,7 +117,7 @@ function LiveCard({ match, roomId, userId }) {
 
         <div className="flex-1 text-center">
           {match.awayTeam?.crest
-            ? <img src={match.awayTeam.crest} alt="" className="w-10 h-10 object-contain mx-auto mb-1" />
+            ? <img src={match.awayTeam.crest} alt="" loading="lazy" className="w-10 h-10 object-contain mx-auto mb-1" />
             : <span className="text-3xl block mb-1">🏳️</span>}
           <p className="text-2xl font-black">{match.awayTeam?.tla || match.awayTeam?.shortName}</p>
           <p className="text-xs text-muted mt-0.5">{match.awayTeam?.name || match.awayTeam?.shortName}</p>
@@ -196,7 +145,7 @@ function MatchRow({ match }) {
       <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0">
         <span className="text-xs font-medium text-right truncate">{match.homeTeam?.shortName}</span>
         {match.homeTeam?.crest
-          ? <img src={match.homeTeam.crest} alt="" className="w-5 h-5 object-contain shrink-0" />
+          ? <img src={match.homeTeam.crest} alt="" loading="lazy" className="w-5 h-5 object-contain shrink-0" />
           : <span className="text-sm shrink-0">🏳️</span>}
       </div>
 
@@ -220,7 +169,7 @@ function MatchRow({ match }) {
 
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
         {match.awayTeam?.crest
-          ? <img src={match.awayTeam.crest} alt="" className="w-5 h-5 object-contain shrink-0" />
+          ? <img src={match.awayTeam.crest} alt="" loading="lazy" className="w-5 h-5 object-contain shrink-0" />
           : <span className="text-sm shrink-0">🏳️</span>}
         <span className="text-xs font-medium truncate">{match.awayTeam?.shortName}</span>
       </div>
@@ -293,6 +242,7 @@ export default function Dashboard({ user, rooms }) {
     if (winners.some((w) => w.userId === user?.uid)) {
       confettiFired.current = true
       fireConfetti()
+      playVictorySound()
     }
   }, [lastMatchPreds.length, liveMatch])
 

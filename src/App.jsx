@@ -13,6 +13,7 @@ import Bracket from './pages/Bracket'
 import Champions from './pages/Champions'
 import Awards from './pages/Awards'
 import Spinner from './components/ui/Spinner'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 
 function AppLayout({ user, logout }) {
   const { rooms, loading, handleCreate, handleJoin, reload } = useRoom(user)
@@ -21,19 +22,21 @@ function AppLayout({ user, logout }) {
     <div className="min-h-screen bg-bg text-white">
       <TopBar rooms={rooms} user={user} onLogout={logout} />
       <main className="max-w-lg mx-auto px-4 pt-16 pb-24">
-        <Routes>
-          <Route path="/" element={<Dashboard user={user} rooms={rooms} />} />
-          <Route path="/predecir" element={<Predict user={user} />} />
-          <Route path="/tabla" element={<Results user={user} />} />
-          <Route path="/salas" element={
-            <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} user={user} reload={reload} />
-          } />
-          <Route path="/llave" element={<Bracket />} />
-          <Route path="/campeones" element={<Champions user={user} />} />
-          <Route path="/premios" element={<Awards user={user} />} />
-          <Route path="/admin" element={<Admin user={user} rooms={rooms} />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Dashboard user={user} rooms={rooms} />} />
+            <Route path="/predecir" element={<Predict user={user} />} />
+            <Route path="/tabla" element={<Results user={user} />} />
+            <Route path="/salas" element={
+              <Rooms rooms={rooms} onCreate={handleCreate} onJoin={handleJoin} loading={loading} user={user} reload={reload} />
+            } />
+            <Route path="/llave" element={<Bracket />} />
+            <Route path="/campeones" element={<Champions user={user} />} />
+            <Route path="/premios" element={<Awards user={user} />} />
+            <Route path="/admin" element={<Admin user={user} rooms={rooms} />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
       <BottomNav />
     </div>

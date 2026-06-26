@@ -5,53 +5,13 @@ import { useLeaderboard } from '../hooks/useLeaderboard'
 import { subscribeToMyPrediction, subscribeToPredictions, savePrediction } from '../lib/firestore'
 import useAppStore from '../store/useAppStore'
 import Spinner from '../components/ui/Spinner'
-
-function toDate(val) {
-  return val?.toDate ? val.toDate() : new Date(val)
-}
+import { toDate, formatDay, formatTime, formatStage, groupByDay } from '../lib/utils'
 
 const LOCK_AFTER_KICKOFF_MS = 5 * 60 * 1000
 
 function isLocked(match) {
   if (match.status === 'FINISHED') return true
   return Date.now() >= toDate(match.kickoff).getTime() + LOCK_AFTER_KICKOFF_MS
-}
-
-
-function formatDay(kickoff) {
-  const d = toDate(kickoff)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  if (d.toDateString() === today.toDateString()) return 'Hoy'
-  if (d.toDateString() === tomorrow.toDateString()) return 'Mañana'
-  return d.toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'short' })
-}
-
-function formatTime(kickoff) {
-  return toDate(kickoff).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function groupByDay(matches) {
-  return matches.reduce((acc, m) => {
-    const day = formatDay(m.kickoff)
-    if (!acc[day]) acc[day] = []
-    acc[day].push(m)
-    return acc
-  }, {})
-}
-
-function formatStage(match) {
-  const g = match.group?.replace('GROUP_', '')
-  if (g && g.length <= 2) return `Grupo ${g}`
-  const stages = {
-    LAST_16: 'Octavos de final',
-    QUARTER_FINALS: 'Cuartos de final',
-    SEMI_FINALS: 'Semifinal',
-    THIRD_PLACE: '3er lugar',
-    FINAL: '🏆 Final',
-  }
-  return stages[match.stage] || ''
 }
 
 function ScoreCircle({ value, onChange, disabled }) {
@@ -82,15 +42,19 @@ function ScoreCircle({ value, onChange, disabled }) {
   )
 }
 
+const KNOCKOUT_STAGES = ['LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
+
 function MatchPredictionCard({ match, roomId, userId, members }) {
   const matchId = match.id
   const [home, setHome] = useState(0)
   const [away, setAway] = useState(0)
+  const [winnerPrediction, setWinnerPrediction] = useState(null)
   const [myPred, setMyPred] = useState(null)
   const [allPreds, setAllPreds] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const locked = isLocked(match)
+  const isKnockout = KNOCKOUT_STAGES.includes(match.stage)
   const predictedCount = members.filter((m) =>
     m.predictedMatches?.includes(String(matchId))
   ).length
@@ -103,10 +67,12 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
         setMyPred(pred)
         setHome(pred.homeScore)
         setAway(pred.awayScore)
+        setWinnerPrediction(pred.winnerPrediction ?? null)
       } else {
         setMyPred(null)
         setHome(0)
         setAway(0)
+        setWinnerPrediction(null)
       }
     })
     return unsub
@@ -124,7 +90,7 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
   const handleSave = async () => {
     if (locked || saving) return
     setSaving(true)
-    await savePrediction(roomId, userId, matchId, home, away)
+    await savePrediction(roomId, userId, matchId, home, away, isKnockout && home === away ? winnerPrediction : null)
     setSaved(true)
     setSaving(false)
     setTimeout(() => setSaved(false), 2500)
@@ -194,12 +160,46 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
           </div>
         </div>
 
+        {/* Selector de ganador en eliminatoria (solo visible si empate) */}
+        {isKnockout && home === away && (
+          <div className="mt-5">
+            <p className="text-xs text-muted text-center mb-2">¿Quién avanza? <span className="text-subtle">(prórroga / penales)</span></p>
+            <div className="flex gap-2">
+              {[
+                { key: 'HOME_TEAM', team: match.homeTeam },
+                { key: 'AWAY_TEAM', team: match.awayTeam },
+              ].map(({ key, team }) => (
+                <button
+                  key={key}
+                  onClick={() => setWinnerPrediction(winnerPrediction === key ? null : key)}
+                  disabled={locked}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border transition-all active:scale-95 disabled:opacity-50 ${
+                    winnerPrediction === key
+                      ? 'bg-gold/15 border-gold text-gold'
+                      : 'bg-surface border-border text-subtle hover:border-gold/40'
+                  }`}
+                >
+                  {team?.crest && <img src={team.crest} alt="" loading="lazy" className="w-5 h-5 object-contain" />}
+                  {team?.shortName}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Aviso si falta elegir ganador en eliminatoria */}
+        {isKnockout && home === away && !winnerPrediction && !locked && (
+          <p className="mt-3 text-xs text-gold text-center">
+            ⚠️ Elige quién avanza para completar tu predicción
+          </p>
+        )}
+
         {/* Save button */}
         {!locked && (
           <button
             onClick={handleSave}
-            disabled={saving}
-            className={`mt-4 w-full py-3.5 rounded-xl font-bold text-sm transition-all ${
+            disabled={saving || (isKnockout && home === away && !winnerPrediction)}
+            className={`mt-4 w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 ${
               saved
                 ? 'bg-win/20 text-win border border-win/30'
                 : 'bg-gold text-bg hover:bg-gold/90 active:scale-95'
@@ -213,6 +213,11 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
           <div className="mt-3 flex justify-center">
             <span className="bg-surface border border-border text-xs text-gold px-4 py-1.5 rounded-full">
               Tu predicción: {myPred.homeScore}–{myPred.awayScore}
+              {myPred.winnerPrediction && (
+                <span className="text-muted ml-1">
+                  · {myPred.winnerPrediction === 'HOME_TEAM' ? match.homeTeam?.shortName : match.awayTeam?.shortName} avanza
+                </span>
+              )}
             </span>
           </div>
         )}
@@ -234,6 +239,11 @@ function MatchPredictionCard({ match, roomId, userId, members }) {
                   {pred ? (
                     <span className={`text-sm font-bold flex items-center gap-1 ${isMe ? 'text-gold' : 'text-white'}`}>
                       {pred.homeScore} – {pred.awayScore}
+                      {pred.winnerPrediction && (
+                        <span className="text-xs font-normal text-muted">
+                          · {pred.winnerPrediction === 'HOME_TEAM' ? match.homeTeam?.shortName : match.awayTeam?.shortName}
+                        </span>
+                      )}
                       {isMe && <span className="text-xs">✏️</span>}
                     </span>
                   ) : (

@@ -1,13 +1,28 @@
+const KNOCKOUT_STAGES = ['LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
+
 export function calculatePoints(predicted, actual) {
-  const { homeScore: pH, awayScore: pA } = predicted
-  const { homeScore: aH, awayScore: aA } = actual
+  const { homeScore: pH, awayScore: pA, winnerPrediction: pW } = predicted
+  const { homeScore: aH, awayScore: aA, winner: aW, duration, stage } = actual
 
   if (aH === null || aA === null) return null
   if (pH === null || pA === null) return null
 
-  if (pH === aH && pA === aA) return 3
+  const exactScore = pH === aH && pA === aA
+  const predictedDraw = pH === pA
+  const actualDraw = aH === aA
+  const isKnockout = KNOCKOUT_STAGES.includes(stage)
+  const wentBeyond90 = duration === 'EXTRA_TIME' || duration === 'PENALTY_SHOOTOUT'
 
-  if (pH === pA && aH === aA) return 2
+  if (exactScore) {
+    // En eliminatoria con empate a 90', el punto extra es por acertar el ganador
+    if (isKnockout && actualDraw && wentBeyond90) {
+      return pW === aW ? 3 : 2
+    }
+    return 3
+  }
+
+  // Empate exacto en fase de grupos
+  if (!isKnockout && predictedDraw && actualDraw) return 2
 
   if (Math.sign(pH - pA) === Math.sign(aH - aA)) return 1
 

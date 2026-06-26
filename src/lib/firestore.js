@@ -65,6 +65,12 @@ export async function joinRoom(code, userId, alias) {
     return roomId
   }
 
+  // Verificar alias duplicado (case-insensitive)
+  const membersSnap = await getDocs(collection(db, 'rooms', roomId, 'members'))
+  const aliasLower = alias.trim().toLowerCase()
+  const aliasTaken = membersSnap.docs.some((d) => d.data().alias?.toLowerCase() === aliasLower)
+  if (aliasTaken) throw new Error('Ese alias ya está en uso en esta sala, elige otro')
+
   await setDoc(memberRef, {
     uid: userId,
     alias,
@@ -199,7 +205,7 @@ function predId(roomId, userId, matchId) {
   return `${roomId}_${userId}_${matchId}`
 }
 
-export async function savePrediction(roomId, userId, matchId, homeScore, awayScore) {
+export async function savePrediction(roomId, userId, matchId, homeScore, awayScore, winnerPrediction = null) {
   const id = predId(roomId, userId, matchId)
   await setDoc(doc(db, 'predictions', id), {
     userId,
@@ -207,6 +213,7 @@ export async function savePrediction(roomId, userId, matchId, homeScore, awaySco
     matchId: String(matchId),
     homeScore,
     awayScore,
+    winnerPrediction,
     points: null,
     submittedAt: serverTimestamp(),
   })

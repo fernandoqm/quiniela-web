@@ -47,7 +47,7 @@ function MatchRow({ match }) {
       <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0">
         <span className="text-sm font-medium text-right truncate">{match.homeTeam?.shortName}</span>
         {match.homeTeam?.crest
-          ? <img src={match.homeTeam.crest} alt="" className="w-6 h-6 object-contain shrink-0" />
+          ? <img src={match.homeTeam.crest} alt="" loading="lazy" className="w-6 h-6 object-contain shrink-0" />
           : <span className="text-base shrink-0">🏳️</span>}
       </div>
 
@@ -71,7 +71,7 @@ function MatchRow({ match }) {
       {/* Away */}
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
         {match.awayTeam?.crest
-          ? <img src={match.awayTeam.crest} alt="" className="w-6 h-6 object-contain shrink-0" />
+          ? <img src={match.awayTeam.crest} alt="" loading="lazy" className="w-6 h-6 object-contain shrink-0" />
           : <span className="text-base shrink-0">🏳️</span>}
         <span className="text-sm font-medium truncate">{match.awayTeam?.shortName}</span>
       </div>

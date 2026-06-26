@@ -49,10 +49,14 @@ export function mapApiMatch(m) {
     },
     kickoff: new Date(m.utcDate),
     status: m.status,
-    homeScore: m.score?.fullTime?.home ?? m.score?.regularTime?.home ?? null,
-    awayScore: m.score?.fullTime?.away ?? m.score?.regularTime?.away ?? null,
+    // Para fase de grupos regularTime === fullTime. En eliminatoria usamos
+    // regularTime (90') para comparar predicciones; fullTime incluye la prórroga.
+    homeScore: m.score?.regularTime?.home ?? m.score?.fullTime?.home ?? null,
+    awayScore: m.score?.regularTime?.away ?? m.score?.fullTime?.away ?? null,
     htHomeScore: m.score?.halfTime?.home ?? null,
     htAwayScore: m.score?.halfTime?.away ?? null,
+    winner: m.score?.winner ?? null,       // 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW'
+    duration: m.score?.duration ?? 'REGULAR', // 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT'
     group: m.group || '',
     stage: m.stage || '',
     minute: m.minute ?? null,
