@@ -263,14 +263,18 @@ export default function Dashboard({ user, rooms }) {
     refreshAll()
   }, [])
 
-  // Refresh automático solo durante ventana de partido (90s con cache-bust)
-  // Fuera de ventana: sin polling, los datos no cambian
+  // Refresh automático solo durante ventana de partido (90s)
+  // Si hay varios partidos en vivo simultáneos, se refrescan todos
   useEffect(() => {
-    if (!inMatchWindow || !matchToWatch?.apiId) return
-    forceRefreshMatch(matchToWatch.apiId)
-    const id = setInterval(() => refreshLiveShared(matchToWatch.apiId), 90 * 1000)
+    if (!inMatchWindow) return
+    const toRefresh = liveMatches.length > 0
+      ? liveMatches.filter((m) => m.apiId)
+      : matchToWatch?.apiId ? [matchToWatch] : []
+    if (toRefresh.length === 0) return
+    toRefresh.forEach((m) => forceRefreshMatch(m.apiId))
+    const id = setInterval(() => toRefresh.forEach((m) => forceRefreshMatch(m.apiId)), 90 * 1000)
     return () => clearInterval(id)
-  }, [inMatchWindow, matchToWatch?.id])
+  }, [inMatchWindow, liveMatches.map((m) => m.id).join(','), matchToWatch?.id])
 
   const handleRefresh = async () => {
     setRefreshing(true)
