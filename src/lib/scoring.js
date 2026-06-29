@@ -1,4 +1,4 @@
-const KNOCKOUT_STAGES = ['LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
+const KNOCKOUT_STAGES = ['ROUND_OF_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
 
 export function calculatePoints(predicted, actual) {
   const { homeScore: pH, awayScore: pA, winnerPrediction: pW } = predicted
