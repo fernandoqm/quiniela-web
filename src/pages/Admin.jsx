@@ -96,7 +96,7 @@ function formatDate(kickoff) {
 
 function pointsLabel(pts) {
   if (pts === 3) return '💎 +3 exacto'
-  if (pts === 2) return '✓ +2 empate'
+  if (pts === 2) return '✓ +2 marcador'
   if (pts === 1) return '✓ +1 resultado'
   if (pts === 0) return '+0'
   return '—'

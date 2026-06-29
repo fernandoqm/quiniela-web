@@ -31,7 +31,7 @@ export function calculatePoints(predicted, actual) {
 
 export function getPointsLabel(points) {
   if (points === 3) return '🎯 ¡Exacto! +3pts'
-  if (points === 2) return '✓ Empate exacto +2pts'
+  if (points === 2) return '✓ Marcador exacto +2pts'
   if (points === 1) return '✓ Resultado +1pt'
   if (points === 0) return '+0pts'
   return ''

@@ -13,6 +13,12 @@ import Spinner from '../components/ui/Spinner'
 const PAGE_SIZE = 10
 
 
+function durationLabel(duration) {
+  if (duration === 'EXTRA_TIME') return 'Prórroga'
+  if (duration === 'PENALTY_SHOOTOUT') return 'Penales'
+  return 'FT'
+}
+
 function MatchResults({ match, roomId, user, members }) {
   const { predictions, calculateAndSave } = usePredictions(roomId, match.id, { isFinished: true })
   const notifiedWin = useRef(false)
@@ -43,7 +49,10 @@ function MatchResults({ match, roomId, user, members }) {
         <div className="bg-win/15 border-b border-win/30 px-4 py-4 text-center">
           <TrophyIcon size={40} className="mx-auto mb-1" />
           <p className="text-xs text-win/70 mb-0.5">
-            {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · FT
+            {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName} · {durationLabel(match.duration)}
+            {match.duration === 'PENALTY_SHOOTOUT' && match.winner && (
+              <span> · {match.winner === 'HOME_TEAM' ? match.homeTeam?.shortName : match.awayTeam?.shortName} avanza</span>
+            )}
           </p>
           <p className="text-win font-black text-lg">
             {winners.length === 1
@@ -59,9 +68,14 @@ function MatchResults({ match, roomId, user, members }) {
       <div className="px-4 py-3 border-b border-border">
         <p className="font-bold text-sm">
           {match.homeTeam?.shortName} {match.homeScore} – {match.awayScore} {match.awayTeam?.shortName}
+          {match.duration === 'PENALTY_SHOOTOUT' && match.winner && (
+            <span className="text-muted font-normal text-xs ml-1">
+              · {match.winner === 'HOME_TEAM' ? match.homeTeam?.shortName : match.awayTeam?.shortName} avanza
+            </span>
+          )}
         </p>
         <p className="text-xs text-muted mt-0.5">
-          {formatDate(match.kickoff)}{formatStage(match) ? ` · ${formatStage(match)}` : ''}
+          {formatDate(match.kickoff)}{formatStage(match) ? ` · ${formatStage(match)}` : ''} · {durationLabel(match.duration)}
         </p>
       </div>
 
@@ -77,7 +91,12 @@ function MatchResults({ match, roomId, user, members }) {
                 <div className="flex items-center gap-2">
                   {winners.some((w) => w.userId === pred.userId) && <span className="text-sm">🥇</span>}
                   <span className="text-sm font-medium">{getAlias(pred.userId)}</span>
-                  <span className="text-xs text-muted">{pred.homeScore}–{pred.awayScore}</span>
+                  <span className="text-xs text-muted">
+                    {pred.homeScore}–{pred.awayScore}
+                    {pred.winnerPrediction && (
+                      <span> · {pred.winnerPrediction === 'HOME_TEAM' ? match.homeTeam?.shortName : match.awayTeam?.shortName}</span>
+                    )}
+                  </span>
                 </div>
                 {pred.points !== null && (
                   <span className={`text-xs font-bold ${getPointsColor(pred.points)}`}>
