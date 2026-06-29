@@ -4,9 +4,10 @@ import { db } from '../lib/firebase'
 import Spinner from '../components/ui/Spinner'
 import { toDate, formatDay, formatTime } from '../lib/utils'
 
-const KNOCKOUT_STAGES = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
+const KNOCKOUT_STAGES = ['ROUND_OF_32', 'LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
 
 const STAGE_LABELS = {
+  ROUND_OF_32: 'Dieciseisavos de final',
   LAST_32: 'Dieciseisavos de final',
   LAST_16: 'Octavos de final',
   QUARTER_FINALS: 'Cuartos de final',

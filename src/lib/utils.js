@@ -37,6 +37,8 @@ export function formatStage(match) {
   const g = match.group?.replace('GROUP_', '')
   if (g && g.length <= 2) return `Grupo ${g}`
   const stages = {
+    ROUND_OF_32: 'Dieciseisavos de final',
+    LAST_32: 'Dieciseisavos de final',
     LAST_16: 'Octavos de final',
     QUARTER_FINALS: 'Cuartos de final',
     SEMI_FINALS: 'Semifinal',
