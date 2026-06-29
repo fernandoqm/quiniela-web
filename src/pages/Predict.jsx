@@ -42,7 +42,7 @@ function ScoreCircle({ value, onChange, disabled }) {
   )
 }
 
-const KNOCKOUT_STAGES = ['ROUND_OF_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
+const KNOCKOUT_STAGES = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL']
 
 function MatchPredictionCard({ match, roomId, userId, members }) {
   const matchId = match.id
