@@ -279,17 +279,6 @@ export async function getPredictionsByRoom(roomId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
-async function recalculateMemberTotal(roomId, userId) {
-  const q = query(
-    collection(db, 'predictions'),
-    where('roomId', '==', roomId),
-    where('userId', '==', userId)
-  )
-  const snap = await getDocs(q)
-  const total = snap.docs.reduce((sum, d) => sum + (d.data().points || 0), 0)
-  await updateDoc(doc(db, 'rooms', roomId, 'members', userId), { totalPoints: total })
-}
-
 // ── Players ────────────────────────────────────────────────────────
 export async function savePlayers(teams) {
   const players = []
@@ -323,7 +312,7 @@ export async function getPlayersDoc() {
 }
 
 export async function getLast32TeamTlas() {
-  const q = query(collection(db, 'matches'), where('stage', '==', 'LAST_32'))
+  const q = query(collection(db, 'matches'), where('stage', 'in', ['LAST_32', 'ROUND_OF_32']))
   const snap = await getDocs(q)
   const tlas = new Set()
   snap.docs.forEach((d) => {
@@ -413,8 +402,15 @@ export async function adminSetMemberTotal(roomId, userId, totalPoints) {
 }
 
 export async function adminFixPoints(roomId, userId, matchId, newPoints) {
-  await updateDoc(doc(db, 'predictions', predId(roomId, userId, matchId)), { points: newPoints })
-  await recalculateMemberTotal(roomId, userId)
+  const predRef = doc(db, 'predictions', predId(roomId, userId, matchId))
+  const memberRef = doc(db, 'rooms', roomId, 'members', userId)
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(predRef)
+    const oldPoints = snap.exists() ? (snap.data().points || 0) : 0
+    const delta = newPoints - oldPoints
+    tx.update(predRef, { points: newPoints })
+    if (delta !== 0) tx.update(memberRef, { totalPoints: increment(delta) })
+  })
 }
 
 export async function updatePredictionPoints(roomId, userId, matchId, points) {

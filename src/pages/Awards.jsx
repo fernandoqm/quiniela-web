@@ -145,7 +145,7 @@ export default function Awards({ user }) {
   }, [])
 
   useEffect(() => {
-    const q = query(collection(db, 'matches'), where('stage', '==', 'LAST_32'))
+    const q = query(collection(db, 'matches'), where('stage', 'in', ['LAST_32', 'ROUND_OF_32']))
     return onSnapshot(q, (snap) => {
       const tlas = new Set()
       snap.docs.forEach((d) => {
